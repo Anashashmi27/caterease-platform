@@ -1,0 +1,12 @@
+{
+  "name": "caterease-platform",
+  "version": "1.0.0",
+  "description": "CaterEase Working Platform",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}

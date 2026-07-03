@@ -489,31 +489,34 @@ function setupEventListeners() {
     const price = parseInt(document.getElementById("chef-price-input").value) || 500;
     const city = document.getElementById("chef-city-input").value.trim();
     
-    const aravind = CHEFS.find(c => c.id === "chef-aravind");
-    if (aravind) {
-      aravind.name = name;
-      aravind.specialties = specialties;
-      aravind.basePrice = price;
+    const activeChef = CHEFS.find(c => c.id === state.currentChefId) || PENDING_CHEFS.find(c => c.id === state.currentChefId);
+    if (activeChef) {
+      activeChef.name = name;
+      activeChef.specialties = specialties;
+      activeChef.type = specialties.split(",")[0] || "General Caterer";
+      activeChef.basePrice = price;
       
-      if (city !== "GPS Location") {
+      if (city !== "GPS Location" && city !== "") {
         const coords = geocodeCity(city);
-        aravind.x = coords.x;
-        aravind.y = coords.y;
+        activeChef.x = coords.x;
+        activeChef.y = coords.y;
       }
+      
+      // Update sidebar texts
+      const sidebarName = document.getElementById("chef-dashboard-name");
+      const sidebarSpec = document.getElementById("chef-dashboard-specialties");
+      if (sidebarName) sidebarName.textContent = name;
+      if (sidebarSpec) sidebarSpec.textContent = activeChef.type;
+      
+      // Refresh views
+      populateChefSelect();
+      renderChefGrid(CHEFS);
+      drawGeoMap();
+      
+      showToast("Profile Logged", `Chef profile saved. Location mapped to grid.`, "success");
+    } else {
+      showToast("Error", "No active chef profile found to edit.", "danger");
     }
-    
-    const sidebarProfileCard = document.querySelector(".chef-profile-card");
-    if (sidebarProfileCard) {
-      sidebarProfileCard.querySelector("h3").textContent = name;
-      sidebarProfileCard.querySelector(".chef-type").textContent = specialties;
-    }
-    
-    renderChefGrid(CHEFS);
-    drawGeoMap();
-    if (state.selectedChef && state.selectedChef.id === "chef-aravind") {
-      openMenuCustomizer(aravind);
-    }
-    showToast("Profile Logged", `Chef profile saved. Location mapped to grid.`, "success");
   });
 
   // Fetch Chef GPS Location
@@ -1922,16 +1925,46 @@ window.handleChefLogin = function() {
   const email = document.getElementById("chef-login-email").value;
   const id = document.getElementById("chef-login-id").value;
   
-  // Basic validation (simulated)
   if (!id.startsWith("chef-")) {
-    showToast("Login Failed", "Invalid Chef ID.", "error");
+    showToast("Login Failed", "Chef ID must start with 'chef-'.", "error");
     return;
   }
   
+  let chef = CHEFS.find(c => c.id === id) || PENDING_CHEFS.find(c => c.id === id);
+  if (!chef) {
+    chef = {
+      id: id,
+      name: email.split('@')[0],
+      email: email,
+      fssai: "14-digit-mock-fssai",
+      type: "Home Caterer",
+      rating: 4.5,
+      reviews: 1,
+      basePrice: 1500,
+      avatar: "https://images.unsplash.com/photo-1577219491135-ce391730fb2c?auto=format&fit=crop&q=80&w=200",
+      specialties: "Indian Cuisine",
+      dietary: ["pure_veg"],
+      x: 200,
+      y: 200,
+      kitchenSpecs: "FSSAI Verified Mock Profile",
+      courses: {
+        appetizers: [{ name: "Starter Delight", modifier: 0, dietary: ["pure_veg"], allergens: [] }],
+        mains: [{ name: "Traditional Main Course", modifier: 100, dietary: ["pure_veg"], allergens: [] }],
+        desserts: [{ name: "Dessert Sweetness", modifier: 0, dietary: ["pure_veg"], allergens: [] }]
+      }
+    };
+    CHEFS.push(chef);
+    renderChefGrid(CHEFS);
+    drawGeoMap();
+  }
+  
   state.currentUser = { role: "chef", email: email, chefId: id };
+  
+  populateChefSelect();
+  
   document.getElementById("auth-chef-dialog").close();
   switchWorkspace("chef");
-  showToast("Welcome Back Chef", "Successfully logged into Kitchen Dashboard", "success");
+  showToast("Welcome Back Chef", `Logged in as ${chef.name}`, "success");
 };
 
 window.handleChefSignup = function() {

@@ -156,7 +156,7 @@ const STANDBY_CHEF = { x: 50, y: 150, name: "Chef Priya Sharma (Standby)", activ
 // 2. Application State
 let state = {
   currentUser: null,
-  currentView: "customer",
+  currentView: "home",
   selectedChef: null,
   currentChefId: "chef-aravind",
   customizations: {
@@ -249,6 +249,7 @@ let state = {
 // 3. Document Elements & Lifecycle Hooks
 document.addEventListener("DOMContentLoaded", () => {
   initUI();
+  populateChefSelect();
   renderChefGrid(CHEFS);
   renderEventFeed();
   drawGeoMap();
@@ -348,8 +349,15 @@ async function reverseGeocode(lat, lng) {
 
 function setupEventListeners() {
   // View switcher buttons
+  document.getElementById("btn-home-view").addEventListener("click", () => switchWorkspace("home"));
   document.getElementById("btn-customer-view").addEventListener("click", () => switchWorkspace("customer"));
   document.getElementById("btn-chef-view").addEventListener("click", () => switchWorkspace("chef"));
+
+  // Bind tabs in customer & chef auth dialogs
+  document.getElementById("tab-cust-login").addEventListener("click", () => switchCustomerAuthTab("login"));
+  document.getElementById("tab-cust-signup").addEventListener("click", () => switchCustomerAuthTab("signup"));
+  document.getElementById("tab-chef-login").addEventListener("click", () => switchChefAuthTab("login"));
+  document.getElementById("tab-chef-signup").addEventListener("click", () => switchChefAuthTab("signup"));
 
   // Secret Admin Access (Ctrl + Shift + A)
   document.addEventListener('keydown', (e) => {
@@ -565,7 +573,7 @@ function setupEventListeners() {
     state.currentChefId = e.target.value;
     
     // Update Chef dashboard view details based on chef selection
-    const activeChef = CHEFS.find(c => c.id === state.currentChefId);
+    const activeChef = CHEFS.find(c => c.id === state.currentChefId) || PENDING_CHEFS.find(c => c.id === state.currentChefId);
     if (activeChef) {
       document.getElementById("chef-dashboard-avatar-img").src = activeChef.avatar;
       document.getElementById("chef-dashboard-name").textContent = activeChef.name;
@@ -579,7 +587,9 @@ function setupEventListeners() {
       // Update matching badge status randomly to simulate dynamic check statuses
       const badge = document.getElementById("chef-badge-status");
       const tag = document.getElementById("verification-status-tag");
-      if (state.currentChefId === "chef-aravind") {
+      const isPending = PENDING_CHEFS.some(c => c.id === state.currentChefId);
+      
+      if (state.currentChefId === "chef-aravind" || isPending) {
         badge.className = "badge-status-dot pending";
         tag.className = "verification-status-tag pending";
         tag.textContent = "Verification Pending";
@@ -676,14 +686,15 @@ function switchWorkspace(role) {
   if (!enforceAuthWall()) return;
   
   // Set button state
+  document.getElementById("btn-home-view").classList.toggle("active", role === "home");
+  document.getElementById("btn-home-view").setAttribute("aria-selected", role === "home");
   document.getElementById("btn-customer-view").classList.toggle("active", role === "customer");
   document.getElementById("btn-customer-view").setAttribute("aria-selected", role === "customer");
   document.getElementById("btn-chef-view").classList.toggle("active", role === "chef");
   document.getElementById("btn-chef-view").setAttribute("aria-selected", role === "chef");
-  document.getElementById("btn-admin-view").classList.toggle("active", role === "admin");
-  document.getElementById("btn-admin-view").setAttribute("aria-selected", role === "admin");
 
   // Show workspaces
+  document.getElementById("home-workspace").classList.toggle("active", role === "home");
   document.getElementById("customer-workspace").classList.toggle("active", role === "customer");
   document.getElementById("chef-workspace").classList.toggle("active", role === "chef");
   document.getElementById("admin-workspace").classList.toggle("active", role === "admin");
@@ -1847,9 +1858,8 @@ window.handleLogout = function() {
   state.currentUser = null;
   showToast("Logged Out", "You have been logged out successfully.", "success");
   
-  // Reset view to customer and trigger auth wall
-  state.currentView = "customer";
-  document.getElementById("btn-customer-view").click(); // Will trigger enforceAuthWall
+  // Reset view to home
+  switchWorkspace("home");
 };
 
 // Customer Tabs
@@ -1881,7 +1891,13 @@ window.switchChefAuthTab = function(tab) {
 // Customer Handlers
 window.handleCustomerLogin = function() {
   const email = document.getElementById("cust-login-email").value;
-  state.currentUser = { role: "customer", email: email };
+  const mockName = email.split('@')[0];
+  state.currentUser = { role: "customer", email: email, name: mockName };
+  
+  if (document.getElementById("cust-name-input")) {
+    document.getElementById("cust-name-input").value = mockName;
+  }
+  
   document.getElementById("auth-customer-dialog").close();
   switchWorkspace("customer");
   showToast("Welcome Back", "Successfully logged into Customer Portal", "success");
@@ -1891,6 +1907,11 @@ window.handleCustomerSignup = function() {
   const name = document.getElementById("cust-signup-name").value;
   const email = document.getElementById("cust-signup-email").value;
   state.currentUser = { role: "customer", email: email, name: name };
+  
+  if (document.getElementById("cust-name-input")) {
+    document.getElementById("cust-name-input").value = name;
+  }
+  
   document.getElementById("auth-customer-dialog").close();
   switchWorkspace("customer");
   showToast("Account Created", "Welcome to CaterEase!", "success");
@@ -2048,7 +2069,39 @@ window.approveChef = function(chefId) {
     populateChefSelect();
     renderPendingChefs();
     drawGeoMap();
+    renderChefGrid(CHEFS);
     
     showToast("Chef Approved", `${approvedChef.name} is now verified and live!`, "success");
   }
 };
+
+window.closeAuthDialog = function(role) {
+  if (role === "customer") {
+    document.getElementById("auth-customer-dialog").close();
+  } else if (role === "chef") {
+    document.getElementById("auth-chef-dialog").close();
+  }
+  // Revert back to home workspace
+  switchWorkspace("home");
+};
+
+function populateChefSelect() {
+  const select = document.getElementById("chef-select-profile");
+  if (!select) return;
+  
+  let list = [...CHEFS];
+  if (state.currentUser && state.currentUser.role === "chef") {
+    const isPending = PENDING_CHEFS.find(c => c.id === state.currentUser.chefId);
+    if (isPending && !list.some(c => c.id === isPending.id)) {
+      list.push(isPending);
+    }
+  }
+  
+  select.innerHTML = list.map(chef => `<option value="${chef.id}">${chef.name}</option>`).join('');
+  
+  if (state.currentUser && state.currentUser.role === "chef") {
+    select.value = state.currentUser.chefId;
+    const event = new Event('change');
+    select.dispatchEvent(event);
+  }
+}

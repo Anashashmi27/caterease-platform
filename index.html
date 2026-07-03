@@ -57,7 +57,8 @@
         <div class="toggle-container">
           <span class="toggle-label">Workspace:</span>
           <div class="role-selector">
-            <button id="btn-customer-view" class="role-btn active" aria-selected="true">Customer</button>
+            <button id="btn-home-view" class="role-btn active" aria-selected="true">Home</button>
+            <button id="btn-customer-view" class="role-btn" aria-selected="false">Customer</button>
             <button id="btn-chef-view" class="role-btn" aria-selected="false">Chef</button>
           </div>
         </div>
@@ -71,7 +72,32 @@
   <!-- Main Application Container -->
   <main class="main-content">
     
-    <section id="customer-workspace" class="workspace-section active">
+    <!-- Home Landing Page Workspace -->
+    <section id="home-workspace" class="workspace-section active">
+      <div class="hero-section">
+        <h2 class="hero-title">India's Smart <span>Catering Marketplace</span></h2>
+        <p class="hero-subtitle">
+          Experience verified local culinary artists, personalized menus built in real-time, 
+          and secure event bookings built on trust.
+        </p>
+        <div class="hero-cta-group">
+          <div class="hero-cta-card" onclick="switchWorkspace('customer')">
+            <div class="card-icon">🍳</div>
+            <h3>Explore Marketplace</h3>
+            <p>Find local chefs, customize menus, see instant quotes, and secure your event catering.</p>
+            <button class="btn-primary">Browse as Host</button>
+          </div>
+          <div class="hero-cta-card" onclick="switchWorkspace('chef')">
+            <div class="card-icon">🧑‍🍳</div>
+            <h3>Join as Partner Chef</h3>
+            <p>Create your custom kitchen listing, receive booking notifications, and expand your culinary business.</p>
+            <button class="btn-secondary">Partner with Us</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="customer-workspace" class="workspace-section">
 
       <!-- CUSTOMER PROFILE & REGISTRATION CARD -->
       <div class="customer-profile-banner glass-panel mb-4">
@@ -771,7 +797,10 @@
   <!-- Customer Auth Dialog -->
   <dialog id="auth-customer-dialog" class="glass-dialog">
     <div class="dialog-content" style="max-width: 400px;">
-      <h3 style="margin-bottom: 0.5rem;">Customer Portal Access</h3>
+      <div class="dialog-header-flex">
+        <h3>Customer Portal Access</h3>
+        <button type="button" class="close-btn" onclick="closeAuthDialog('customer')">&times;</button>
+      </div>
       <p class="text-secondary mb-4">Please log in or sign up to continue.</p>
       
       <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem;">
@@ -804,7 +833,10 @@
   <!-- Chef Auth Dialog -->
   <dialog id="auth-chef-dialog" class="glass-dialog">
     <div class="dialog-content" style="max-width: 500px;">
-      <h3 style="margin-bottom: 0.5rem;">Chef Portal Access</h3>
+      <div class="dialog-header-flex">
+        <h3>Chef Portal Access</h3>
+        <button type="button" class="close-btn" onclick="closeAuthDialog('chef')">&times;</button>
+      </div>
       <p class="text-secondary mb-4">Partner with CaterEase or log in to your kitchen dashboard.</p>
       
       <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem;">

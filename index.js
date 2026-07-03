@@ -1968,26 +1968,25 @@ window.handleChefLogin = function() {
   const email = document.getElementById("chef-login-email").value.trim().toLowerCase();
   const id = document.getElementById("chef-login-id").value.trim();
   
-  if (!id.startsWith("chef-")) {
-    showToast("Login Failed", "Chef ID must start with 'chef-'.", "error");
+  // Find in verified chefs database
+  let chef = CHEFS.find(c => c.id === id && c.email && c.email.toLowerCase() === email);
+  if (chef) {
+    state.currentUser = { role: "chef", email: email, chefId: id };
+    populateChefSelect();
+    document.getElementById("auth-chef-dialog").close();
+    switchWorkspace("chef");
+    showToast("Welcome Back Chef", `Logged in as ${chef.name}`, "success");
     return;
   }
   
-  let chef = CHEFS.find(c => c.id === id && c.email && c.email.toLowerCase() === email) || 
-             PENDING_CHEFS.find(c => c.id === id && c.email && c.email.toLowerCase() === email);
-             
-  if (!chef) {
-    showToast("Login Failed", "Invalid credentials. Email and Chef ID do not match.", "error");
+  // Check if it is pending verification
+  let pendingChef = PENDING_CHEFS.find(c => c.id === id && c.email && c.email.toLowerCase() === email);
+  if (pendingChef) {
+    showToast("Login Locked", "Your profile is still pending FSSAI verification. Please wait for email confirmation.", "warning");
     return;
   }
   
-  state.currentUser = { role: "chef", email: email, chefId: id };
-  
-  populateChefSelect();
-  
-  document.getElementById("auth-chef-dialog").close();
-  switchWorkspace("chef");
-  showToast("Welcome Back Chef", `Logged in as ${chef.name}`, "success");
+  showToast("Login Failed", "Invalid credentials. Email and Chef ID do not match our database.", "error");
 };
 
 window.handleChefSignup = function() {
@@ -2038,8 +2037,20 @@ window.handleChefSignup = function() {
 };
 
 function finalizeChefSignup(name, email, specialties, price, locX, locY, dietary, fssai) {
+  // Generate a unique 8-digit ID
+  let random8Digit;
+  let isUnique = false;
+  while (!isUnique) {
+    random8Digit = Math.floor(10000000 + Math.random() * 90000000);
+    const mockId = "chef-" + random8Digit;
+    if (!CHEFS.some(c => c.id === mockId) && !PENDING_CHEFS.some(c => c.id === mockId)) {
+      isUnique = true;
+    }
+  }
+  const chefId = "chef-" + random8Digit;
+
   const newChef = {
-    id: "chef-" + Date.now(),
+    id: chefId,
     name: name,
     email: email,
     fssai: fssai,
@@ -2063,9 +2074,6 @@ function finalizeChefSignup(name, email, specialties, price, locX, locY, dietary
   PENDING_CHEFS.push(newChef);
   localStorage.setItem("caterease_pending_chefs", JSON.stringify(PENDING_CHEFS));
   
-  // Log them in as a pending chef
-  state.currentUser = { role: "chef", email: email, chefId: newChef.id, status: "pending" };
-  
   const submitBtn = document.getElementById("btn-chef-signup-submit");
   submitBtn.disabled = false;
   submitBtn.textContent = "Submit Application";
@@ -2073,8 +2081,13 @@ function finalizeChefSignup(name, email, specialties, price, locX, locY, dietary
   document.getElementById("auth-chef-dialog").close();
   document.getElementById("chef-signup-form").reset();
   
-  switchWorkspace("chef");
-  showToast("Application Submitted", "Your chef profile is pending admin review.", "success");
+  // Show pop-up message requested by user
+  const alertDialog = document.getElementById("generic-alert-dialog");
+  document.getElementById("alert-dialog-title").textContent = "FSSAI Review Notice";
+  document.getElementById("alert-dialog-message").textContent = "Your FSSAI ID is being reviewed and your Chef ID will be mailed after the verification.";
+  alertDialog.showModal();
+  
+  switchWorkspace("home");
   
   if (state.currentView === "admin") {
     renderPendingChefs();
@@ -2133,6 +2146,18 @@ window.approveChef = function(chefId) {
     renderChefGrid(CHEFS);
     
     showToast("Chef Approved", `${approvedChef.name} is now verified and live!`, "success");
+
+    // Show simulated email dialog pop-up on page
+    const alertDialog = document.getElementById("generic-alert-dialog");
+    document.getElementById("alert-dialog-title").textContent = "📧 Simulated Email Sent";
+    document.getElementById("alert-dialog-message").innerHTML = `
+      <strong>To:</strong> ${approvedChef.email}<br>
+      <strong>Subject:</strong> Welcome to CaterEase! Profile Approved.<br><br>
+      Your kitchen registration is approved. Your unique 8-digit Chef ID is:<br>
+      <span style="font-family: monospace; font-size: 1.3rem; font-weight: bold; color: var(--orange); background: rgba(0,0,0,0.05); padding: 0.25rem 0.5rem; border-radius: 4px; display: inline-block; margin-top: 0.5rem;">${approvedChef.id}</span><br><br>
+      Use this Chef ID and your registered email address to log in to the Chef Portal.
+    `;
+    alertDialog.showModal();
   }
 };
 

@@ -994,6 +994,15 @@
     </div>
   </div>
 
+  <!-- Generic Alert Dialog -->
+  <dialog id="generic-alert-dialog" class="glass-dialog">
+    <div class="dialog-content" style="max-width: 400px; text-align: center;">
+      <h3 id="alert-dialog-title" style="margin-bottom: 1rem; color: var(--navy-dark);">Notice</h3>
+      <p id="alert-dialog-message" class="text-secondary" style="margin-bottom: 1.5rem; line-height: 1.6;"></p>
+      <button type="button" class="btn-primary" onclick="document.getElementById('generic-alert-dialog').close()" style="width: 100px;">OK</button>
+    </div>
+  </dialog>
+
   <script src="index.js" type="module"></script>
 </body>
 </html>

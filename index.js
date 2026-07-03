@@ -97,6 +97,8 @@ const CHEFS = [
   }
 ];
 
+const PENDING_CHEFS = [];
+
 const EVENTS = [
   {
     id: "evt_01J8PQ7WNX",
@@ -346,6 +348,18 @@ function setupEventListeners() {
   // View switcher buttons
   document.getElementById("btn-customer-view").addEventListener("click", () => switchWorkspace("customer"));
   document.getElementById("btn-chef-view").addEventListener("click", () => switchWorkspace("chef"));
+  document.getElementById("btn-admin-view").addEventListener("click", () => switchWorkspace("admin"));
+
+  // Chef Onboarding
+  document.getElementById("btn-join-chef").addEventListener("click", () => {
+    document.getElementById("chef-onboarding-dialog").showModal();
+  });
+  
+  document.getElementById("btn-onboard-cancel").addEventListener("click", () => {
+    document.getElementById("chef-onboarding-dialog").close();
+  });
+  
+  document.getElementById("chef-onboarding-form").addEventListener("submit", handleChefOnboardingSubmit);
   
   // Search action
   document.getElementById("btn-run-search").addEventListener("click", runSearchFilter);
@@ -663,10 +677,17 @@ function switchWorkspace(role) {
   document.getElementById("btn-customer-view").setAttribute("aria-selected", role === "customer");
   document.getElementById("btn-chef-view").classList.toggle("active", role === "chef");
   document.getElementById("btn-chef-view").setAttribute("aria-selected", role === "chef");
+  document.getElementById("btn-admin-view").classList.toggle("active", role === "admin");
+  document.getElementById("btn-admin-view").setAttribute("aria-selected", role === "admin");
 
   // Show workspaces
   document.getElementById("customer-workspace").classList.toggle("active", role === "customer");
   document.getElementById("chef-workspace").classList.toggle("active", role === "chef");
+  document.getElementById("admin-workspace").classList.toggle("active", role === "admin");
+
+  if (role === "admin") {
+    renderPendingChefs();
+  }
 
   drawGeoMap();
 }
@@ -1787,3 +1808,100 @@ function showToast(title, msg, type = "success") {
     setTimeout(() => toast.remove(), 300);
   }, 4000);
 }
+
+// 14. Chef Onboarding & Admin Logic
+function handleChefOnboardingSubmit(e) {
+  e.preventDefault();
+  
+  const name = document.getElementById("onboard-name").value;
+  const specialties = document.getElementById("onboard-specialties").value;
+  const price = parseInt(document.getElementById("onboard-price").value);
+  const locX = parseInt(document.getElementById("onboard-loc-x").value);
+  const locY = parseInt(document.getElementById("onboard-loc-y").value);
+  
+  const dietaryCheckboxes = document.querySelectorAll('input[name="onboard-diet"]:checked');
+  const dietary = Array.from(dietaryCheckboxes).map(cb => cb.value);
+  
+  const newChef = {
+    id: "chef-" + Date.now(),
+    name: name,
+    type: specialties.split(",")[0] || "General Caterer",
+    rating: 0.0,
+    reviews: 0,
+    basePrice: price,
+    avatar: "https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&q=80&w=200", // Default avatar
+    specialties: specialties,
+    dietary: dietary,
+    x: locX,
+    y: locY,
+    kitchenSpecs: "Awaiting inspection details...",
+    courses: {
+      appetizers: [{ name: "Chef's Special Appetizer", modifier: 0, dietary: dietary, allergens: [] }],
+      mains: [{ name: "Chef's Signature Main", modifier: 100, dietary: dietary, allergens: [] }],
+      desserts: [{ name: "Sweet Delight", modifier: 0, dietary: dietary, allergens: [] }]
+    }
+  };
+  
+  PENDING_CHEFS.push(newChef);
+  
+  document.getElementById("chef-onboarding-dialog").close();
+  e.target.reset();
+  
+  showToast("Application Submitted", "Your chef profile is under review by our admin team.", "success");
+  
+  // Re-render admin view if currently in admin view
+  if (state.currentView === "admin") {
+    renderPendingChefs();
+  }
+}
+
+function renderPendingChefs() {
+  const container = document.getElementById("pending-chefs-list");
+  const countSpan = document.getElementById("pending-chef-count");
+  
+  countSpan.textContent = PENDING_CHEFS.length;
+  
+  if (PENDING_CHEFS.length === 0) {
+    container.innerHTML = `<div class="text-center p-4"><p class="text-secondary">No pending applications.</p></div>`;
+    return;
+  }
+  
+  container.innerHTML = PENDING_CHEFS.map(chef => `
+    <div class="booking-card pending-chef-card" style="border: 1px solid var(--glass-border); padding: 1.5rem; border-radius: var(--radius-md); margin-bottom: 1rem; background: var(--bg-primary);">
+      <div class="booking-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <span class="booking-id" style="font-size: 0.8rem; color: var(--text-secondary);">ID: ${chef.id}</span>
+          <h4 style="margin: 0.25rem 0; font-family: var(--font-heading); color: var(--navy-accent); font-size: 1.1rem;">${chef.name}</h4>
+        </div>
+        <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #b45309; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">Pending Review</span>
+      </div>
+      <div class="booking-details mt-2" style="font-size: 0.9rem;">
+        <p style="margin-bottom: 0.25rem;"><strong>Specialties:</strong> ${chef.specialties}</p>
+        <p style="margin-bottom: 0.25rem;"><strong>Base Price:</strong> ₹${chef.basePrice} / Plate</p>
+        <p style="margin-bottom: 0.25rem;"><strong>Coordinates:</strong> (${chef.x}, ${chef.y})</p>
+      </div>
+      <div class="booking-actions mt-3">
+        <button class="btn-success btn-sm" onclick="approveChef('${chef.id}')">Verify & Approve</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.approveChef = function(chefId) {
+  const index = PENDING_CHEFS.findIndex(c => c.id === chefId);
+  if (index > -1) {
+    const approvedChef = PENDING_CHEFS.splice(index, 1)[0];
+    CHEFS.push(approvedChef);
+    
+    // Re-render dropdowns
+    populateChefSelect();
+    
+    // Re-render Admin View
+    renderPendingChefs();
+    
+    // Re-render Map to show new chef
+    drawGeoMap();
+    
+    showToast("Chef Approved", `${approvedChef.name} is now live on the platform!`, "success");
+  }
+};

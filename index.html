@@ -19,7 +19,7 @@
   <!-- Dynamic Header / Navigation -->
   <header class="app-header">
     <div class="header-container">
-      <div class="brand">
+      <div class="brand" onclick="switchWorkspace('home')" style="cursor: pointer;" title="Go to Home Landing Page">
         <!-- Logo SVG designed precisely from the user's uploaded logo -->
         <div class="logo-mark">
           <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -57,7 +57,7 @@
         <div class="toggle-container">
           <span class="toggle-label">Workspace:</span>
           <div class="role-selector">
-            <button id="btn-home-view" class="role-btn active" aria-selected="true">Home</button>
+            <button id="btn-home-view" class="role-btn active" aria-selected="true" style="display: none;">Home</button>
             <button id="btn-customer-view" class="role-btn" aria-selected="false">Customer</button>
             <button id="btn-chef-view" class="role-btn" aria-selected="false">Chef</button>
           </div>

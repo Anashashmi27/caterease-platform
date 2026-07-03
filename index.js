@@ -2074,21 +2074,15 @@ window.handleChefLogin = function() {
   const email = document.getElementById("chef-login-email").value.trim().toLowerCase();
   const id = document.getElementById("chef-login-id").value.trim();
   
-  // Find in verified chefs database
-  let chef = CHEFS.find(c => c.id === id && c.email && c.email.toLowerCase() === email);
+  // Find in verified or pending chefs database
+  let chef = CHEFS.find(c => c.id === id && c.email && c.email.toLowerCase() === email) ||
+             PENDING_CHEFS.find(c => c.id === id && c.email && c.email.toLowerCase() === email);
+             
   if (chef) {
     state.currentUser = { role: "chef", email: email, chefId: id };
-    populateChefSelect();
     document.getElementById("auth-chef-dialog").close();
     switchWorkspace("chef");
     showToast("Welcome Back Chef", `Logged in as ${chef.name}`, "success");
-    return;
-  }
-  
-  // Check if it is pending verification
-  let pendingChef = PENDING_CHEFS.find(c => c.id === id && c.email && c.email.toLowerCase() === email);
-  if (pendingChef) {
-    showToast("Login Locked", "Your profile is still pending FSSAI verification. Please wait for email confirmation.", "warning");
     return;
   }
   

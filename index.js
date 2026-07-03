@@ -1,10 +1,11 @@
 /* CaterEase India Application Logic */
 
 // 1. Indian-Localized Mock Data Set
-const CHEFS = [
+const DEFAULT_CHEFS = [
   {
     id: "chef-aravind",
     name: "Chef Aravind Nair",
+    email: "aravind@example.com",
     type: "South Indian & Coastal Fusion Artisan",
     rating: 4.9,
     reviews: 142,
@@ -36,6 +37,7 @@ const CHEFS = [
   {
     id: "chef-meera",
     name: "Chef Meera Sodha",
+    email: "meera@example.com",
     type: "North Indian & Royal Awadhi Specialist",
     rating: 4.8,
     reviews: 98,
@@ -67,6 +69,7 @@ const CHEFS = [
   {
     id: "chef-rohan",
     name: "Chef Rohan Mehta",
+    email: "rohan@example.com",
     type: "Gujarati & Heritage Jain Artisan",
     rating: 5.0,
     reviews: 64,
@@ -97,7 +100,14 @@ const CHEFS = [
   }
 ];
 
-const PENDING_CHEFS = [];
+let CHEFS = JSON.parse(localStorage.getItem("caterease_chefs"));
+if (!CHEFS || CHEFS.length === 0) {
+  CHEFS = DEFAULT_CHEFS;
+  localStorage.setItem("caterease_chefs", JSON.stringify(CHEFS));
+}
+
+let PENDING_CHEFS = JSON.parse(localStorage.getItem("caterease_pending_chefs")) || [];
+let CUSTOMERS = JSON.parse(localStorage.getItem("caterease_customers")) || [];
 
 const EVENTS = [
   {
@@ -249,6 +259,15 @@ let state = {
 // 3. Document Elements & Lifecycle Hooks
 document.addEventListener("DOMContentLoaded", () => {
   initUI();
+  
+  // Sync state.bookings from localStorage
+  const savedBookings = localStorage.getItem("caterease_bookings");
+  if (savedBookings) {
+    state.bookings = JSON.parse(savedBookings);
+  } else {
+    localStorage.setItem("caterease_bookings", JSON.stringify(state.bookings));
+  }
+  
   populateChefSelect();
   renderChefGrid(CHEFS);
   renderEventFeed();
@@ -508,6 +527,10 @@ function setupEventListeners() {
       if (sidebarName) sidebarName.textContent = name;
       if (sidebarSpec) sidebarSpec.textContent = activeChef.type;
       
+      // Save updated databases to localStorage
+      localStorage.setItem("caterease_chefs", JSON.stringify(CHEFS));
+      localStorage.setItem("caterease_pending_chefs", JSON.stringify(PENDING_CHEFS));
+
       // Refresh views
       populateChefSelect();
       renderChefGrid(CHEFS);
@@ -1897,22 +1920,38 @@ window.switchChefAuthTab = function(tab) {
 
 // Customer Handlers
 window.handleCustomerLogin = function() {
-  const email = document.getElementById("cust-login-email").value;
-  const mockName = email.split('@')[0];
-  state.currentUser = { role: "customer", email: email, name: mockName };
+  const email = document.getElementById("cust-login-email").value.trim().toLowerCase();
+  
+  const customer = CUSTOMERS.find(c => c.email === email);
+  if (!customer) {
+    showToast("Login Failed", "Email not registered. Please Sign Up first.", "error");
+    return;
+  }
+  
+  state.currentUser = { role: "customer", email: email, name: customer.name };
   
   if (document.getElementById("cust-name-input")) {
-    document.getElementById("cust-name-input").value = mockName;
+    document.getElementById("cust-name-input").value = customer.name;
   }
   
   document.getElementById("auth-customer-dialog").close();
   switchWorkspace("customer");
-  showToast("Welcome Back", "Successfully logged into Customer Portal", "success");
+  showToast("Welcome Back", `Successfully logged in as ${customer.name}`, "success");
 };
 
 window.handleCustomerSignup = function() {
-  const name = document.getElementById("cust-signup-name").value;
-  const email = document.getElementById("cust-signup-email").value;
+  const name = document.getElementById("cust-signup-name").value.trim();
+  const email = document.getElementById("cust-signup-email").value.trim().toLowerCase();
+  
+  if (CUSTOMERS.some(c => c.email === email)) {
+    showToast("Registration Failed", "Email already registered. Please Log In.", "error");
+    return;
+  }
+  
+  const newCustomer = { name, email };
+  CUSTOMERS.push(newCustomer);
+  localStorage.setItem("caterease_customers", JSON.stringify(CUSTOMERS));
+  
   state.currentUser = { role: "customer", email: email, name: name };
   
   if (document.getElementById("cust-name-input")) {
@@ -1926,40 +1965,20 @@ window.handleCustomerSignup = function() {
 
 // Chef Handlers
 window.handleChefLogin = function() {
-  const email = document.getElementById("chef-login-email").value;
-  const id = document.getElementById("chef-login-id").value;
+  const email = document.getElementById("chef-login-email").value.trim().toLowerCase();
+  const id = document.getElementById("chef-login-id").value.trim();
   
   if (!id.startsWith("chef-")) {
     showToast("Login Failed", "Chef ID must start with 'chef-'.", "error");
     return;
   }
   
-  let chef = CHEFS.find(c => c.id === id) || PENDING_CHEFS.find(c => c.id === id);
+  let chef = CHEFS.find(c => c.id === id && c.email && c.email.toLowerCase() === email) || 
+             PENDING_CHEFS.find(c => c.id === id && c.email && c.email.toLowerCase() === email);
+             
   if (!chef) {
-    chef = {
-      id: id,
-      name: email.split('@')[0],
-      email: email,
-      fssai: "14-digit-mock-fssai",
-      type: "Home Caterer",
-      rating: 4.5,
-      reviews: 1,
-      basePrice: 1500,
-      avatar: "https://images.unsplash.com/photo-1577219491135-ce391730fb2c?auto=format&fit=crop&q=80&w=200",
-      specialties: "Indian Cuisine",
-      dietary: ["pure_veg"],
-      x: 200,
-      y: 200,
-      kitchenSpecs: "FSSAI Verified Mock Profile",
-      courses: {
-        appetizers: [{ name: "Starter Delight", modifier: 0, dietary: ["pure_veg"], allergens: [] }],
-        mains: [{ name: "Traditional Main Course", modifier: 100, dietary: ["pure_veg"], allergens: [] }],
-        desserts: [{ name: "Dessert Sweetness", modifier: 0, dietary: ["pure_veg"], allergens: [] }]
-      }
-    };
-    CHEFS.push(chef);
-    renderChefGrid(CHEFS);
-    drawGeoMap();
+    showToast("Login Failed", "Invalid credentials. Email and Chef ID do not match.", "error");
+    return;
   }
   
   state.currentUser = { role: "chef", email: email, chefId: id };
@@ -2042,6 +2061,7 @@ function finalizeChefSignup(name, email, specialties, price, locX, locY, dietary
   };
   
   PENDING_CHEFS.push(newChef);
+  localStorage.setItem("caterease_pending_chefs", JSON.stringify(PENDING_CHEFS));
   
   // Log them in as a pending chef
   state.currentUser = { role: "chef", email: email, chefId: newChef.id, status: "pending" };
@@ -2102,6 +2122,10 @@ window.approveChef = function(chefId) {
     const approvedChef = PENDING_CHEFS.splice(index, 1)[0];
     approvedChef.kitchenSpecs = "FSSAI Verified (" + approvedChef.fssai + ")";
     CHEFS.push(approvedChef);
+    
+    // Save to database
+    localStorage.setItem("caterease_chefs", JSON.stringify(CHEFS));
+    localStorage.setItem("caterease_pending_chefs", JSON.stringify(PENDING_CHEFS));
     
     populateChefSelect();
     renderPendingChefs();

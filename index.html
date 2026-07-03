@@ -74,12 +74,38 @@
     
     <!-- Home Landing Page Workspace -->
     <section id="home-workspace" class="workspace-section active">
-      <div class="hero-section">
-        <h2 class="hero-title">India's Smart <span>Catering Marketplace</span></h2>
+      <div class="hero-section" style="padding-top: 2rem;">
+        
+        <!-- Large CaterEase Brand Logo on Home Page -->
+        <div class="logo-mark" style="margin-bottom: 1.5rem; filter: drop-shadow(0 4px 10px rgba(239, 108, 0, 0.15));">
+          <svg width="90" height="90" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Connection Arc -->
+            <path d="M20 65C20 40 40 20 50 20C60 20 80 40 80 65" stroke="var(--navy-accent)" stroke-width="3" stroke-linecap="round"/>
+            <!-- Connection Nodes -->
+            <circle cx="20" cy="65" r="7" fill="var(--orange)"/>
+            <circle cx="80" cy="65" r="7" fill="var(--orange)"/>
+            <circle cx="50" cy="20" r="7" fill="var(--orange)"/>
+            <circle cx="32" cy="38" r="7" fill="var(--navy-accent)"/>
+            <circle cx="68" cy="38" r="7" fill="var(--navy-accent)"/>
+            <!-- Platter Cloche (Food Cover) -->
+            <path d="M50 35C38 35 30 45 30 57H70C70 45 62 35 50 35Z" fill="var(--orange)"/>
+            <!-- Handle of Cloche -->
+            <path d="M47 31C47 29.5 48.5 28 50 28C51.5 28 53 29.5 53 31H47Z" fill="var(--orange)"/>
+            <!-- Platter Base -->
+            <rect x="25" y="58" width="50" height="3" rx="1.5" fill="var(--navy-accent)"/>
+            <!-- Under Platter Spoon Arc -->
+            <path d="M30 61C30 67 40 72 50 72C60 72 70 67 70 61C62 65 58 63 50 63C42 63 38 65 30 61Z" fill="var(--navy-accent)"/>
+          </svg>
+        </div>
+
+        <h2 class="hero-title" style="margin-top: 0; margin-bottom: 0.5rem;">Cater<span>Ease</span></h2>
+        <h3 style="font-family: var(--font-heading); font-size: 1.8rem; color: var(--navy-dark); margin: 0 0 1.5rem 0; font-weight: 600;">India's Smart Catering Marketplace</h3>
+        
         <p class="hero-subtitle">
           Experience verified local culinary artists, personalized menus built in real-time, 
-          and secure event bookings built on trust.
+          and secure event bookings built on trust and convenience.
         </p>
+
         <div class="hero-cta-group">
           <div class="hero-cta-card" onclick="switchWorkspace('customer')">
             <div class="card-icon">🍳</div>
@@ -92,6 +118,63 @@
             <h3>Join as Partner Chef</h3>
             <p>Create your custom kitchen listing, receive booking notifications, and expand your culinary business.</p>
             <button class="btn-secondary">Partner with Us</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- More About Platform Section -->
+      <div class="about-platform-section glass-panel" style="margin: 2rem auto; max-width: 960px; padding: 2.5rem; border-radius: var(--radius-lg); background: var(--bg-primary);">
+        <h3 style="font-family: var(--font-heading); color: var(--navy-dark); font-size: 1.8rem; text-align: center; margin-bottom: 2.5rem; font-weight: 700;">
+          A Catering Experience Engineered for Trust
+        </h3>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 2rem;">
+          <div style="display: flex; gap: 1rem; align-items: flex-start;">
+            <div style="font-size: 1.5rem; background: rgba(239, 108, 0, 0.1); color: var(--orange); padding: 0.5rem 0.75rem; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; line-height: 1;">
+              ✓
+            </div>
+            <div>
+              <h4 style="font-family: var(--font-heading); color: var(--navy-accent); font-size: 1.1rem; margin-bottom: 0.5rem; font-weight: 600;">FSSAI Compliance Verification</h4>
+              <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; margin: 0;">
+                All culinary partners undergo rigorous FSSAI compliance verification to ensure highest health standards.
+              </p>
+            </div>
+          </div>
+          
+          <div style="display: flex; gap: 1rem; align-items: flex-start;">
+            <div style="font-size: 1.5rem; background: rgba(239, 108, 0, 0.1); color: var(--orange); padding: 0.5rem 0.75rem; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; line-height: 1;">
+              🧭
+            </div>
+            <div>
+              <h4 style="font-family: var(--font-heading); color: var(--navy-accent); font-size: 1.1rem; margin-bottom: 0.5rem; font-weight: 600;">Geofenced Proximity Matching</h4>
+              <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; margin: 0;">
+                Find culinary experts operating within your geofence radius. Real-time routing estimates ensure timely delivery.
+              </p>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 1rem; align-items: flex-start;">
+            <div style="font-size: 1.5rem; background: rgba(239, 108, 0, 0.1); color: var(--orange); padding: 0.5rem 0.75rem; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; line-height: 1;">
+              📊
+            </div>
+            <div>
+              <h4 style="font-family: var(--font-heading); color: var(--navy-accent); font-size: 1.1rem; margin-bottom: 0.5rem; font-weight: 600;">Real-Time Price Calculator</h4>
+              <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; margin: 0;">
+                Tweak menus, adjust guest counts, and watch itemized bills update instantly. No hidden fees or surprises.
+              </p>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 1rem; align-items: flex-start;">
+            <div style="font-size: 1.5rem; background: rgba(239, 108, 0, 0.1); color: var(--orange); padding: 0.5rem 0.75rem; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; line-height: 1;">
+              🔒
+            </div>
+            <div>
+              <h4 style="font-family: var(--font-heading); color: var(--navy-accent); font-size: 1.1rem; margin-bottom: 0.5rem; font-weight: 600;">Secure Handshake Protection</h4>
+              <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; margin: 0;">
+                Payments are securely managed and only disbursed after delivery verification, keeping both hosts and chefs safe.
+              </p>
+            </div>
           </div>
         </div>
       </div>

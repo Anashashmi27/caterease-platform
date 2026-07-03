@@ -2176,8 +2176,8 @@ function finalizeChefSignup(name, email, specialties, price, locX, locY, dietary
     }
   };
   
-  PENDING_CHEFS.push(newChef);
-  localStorage.setItem("caterease_pending_chefs", JSON.stringify(PENDING_CHEFS));
+  CHEFS.push(newChef);
+  localStorage.setItem("caterease_chefs", JSON.stringify(CHEFS));
   
   const submitBtn = document.getElementById("btn-chef-signup-submit");
   submitBtn.disabled = false;
@@ -2188,15 +2188,15 @@ function finalizeChefSignup(name, email, specialties, price, locX, locY, dietary
   
   // Show pop-up message and simulated email
   const alertDialog = document.getElementById("generic-alert-dialog");
-  document.getElementById("alert-dialog-title").textContent = "FSSAI Review & Chef ID Notice";
+  document.getElementById("alert-dialog-title").textContent = "Chef Registration Complete!";
   document.getElementById("alert-dialog-message").innerHTML = `
-    <p>Your FSSAI ID is being reviewed and your Chef ID will be mailed after the verification.</p>
+    <p>Welcome to CaterEase! Your kitchen profile is registered. You can log in immediately to access your portal.</p>
     <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 1rem 0;">
     <div style="text-align: left; background: rgba(30, 58, 138, 0.05); padding: 1rem; border-radius: var(--radius-md);">
       <h5 style="margin-top: 0; margin-bottom: 0.5rem; color: var(--navy-dark);">📧 Simulated Email Sent</h5>
       <strong>To:</strong> ${email}<br>
       <strong>Subject:</strong> Welcome to CaterEase!<br><br>
-      Your registration is submitted. Your unique 8-digit Chef ID is:<br>
+      Your unique 8-digit Chef ID is:<br>
       <span style="font-family: monospace; font-size: 1.25rem; font-weight: bold; color: var(--orange); background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 4px; display: inline-block; margin-top: 0.25rem;">${chefId}</span>
     </div>
   `;
@@ -2204,9 +2204,9 @@ function finalizeChefSignup(name, email, specialties, price, locX, locY, dietary
   
   switchWorkspace("home");
   
-  if (state.currentView === "admin") {
-    renderPendingChefs();
-  }
+  // Refresh search grid so the chef immediately appears in the customer view
+  renderChefGrid(CHEFS);
+  drawGeoMap();
 }
 
 // 15. Admin Approval Logic

@@ -155,6 +155,7 @@ const STANDBY_CHEF = { x: 50, y: 150, name: "Chef Priya Sharma (Standby)", activ
 
 // 2. Application State
 let state = {
+  currentUser: null,
   currentView: "customer",
   selectedChef: null,
   currentChefId: "chef-aravind",
@@ -254,6 +255,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
   triggerBackgroundCheckSimulation();
   renderChefPendingOrders();
+  enforceAuthWall();
 });
 
 // 4. Initialize UI bindings
@@ -348,18 +350,17 @@ function setupEventListeners() {
   // View switcher buttons
   document.getElementById("btn-customer-view").addEventListener("click", () => switchWorkspace("customer"));
   document.getElementById("btn-chef-view").addEventListener("click", () => switchWorkspace("chef"));
-  document.getElementById("btn-admin-view").addEventListener("click", () => switchWorkspace("admin"));
 
-  // Chef Onboarding
-  document.getElementById("btn-join-chef").addEventListener("click", () => {
-    document.getElementById("chef-onboarding-dialog").showModal();
+  // Secret Admin Access (Ctrl + Shift + A)
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+      e.preventDefault();
+      switchWorkspace("admin");
+    }
   });
-  
-  document.getElementById("btn-onboard-cancel").addEventListener("click", () => {
-    document.getElementById("chef-onboarding-dialog").close();
-  });
-  
-  document.getElementById("chef-onboarding-form").addEventListener("submit", handleChefOnboardingSubmit);
+
+  // Auth Logout
+  document.getElementById("btn-logout").addEventListener("click", handleLogout);
   
   // Search action
   document.getElementById("btn-run-search").addEventListener("click", runSearchFilter);
@@ -671,6 +672,8 @@ function setupEventListeners() {
 // 5. Switching Portals
 function switchWorkspace(role) {
   state.currentView = role;
+  
+  if (!enforceAuthWall()) return;
   
   // Set button state
   document.getElementById("btn-customer-view").classList.toggle("active", role === "customer");
@@ -1809,32 +1812,170 @@ function showToast(title, msg, type = "success") {
   }, 4000);
 }
 
-// 14. Chef Onboarding & Admin Logic
-function handleChefOnboardingSubmit(e) {
-  e.preventDefault();
+// 14. Authentication & Onboarding Logic
+
+function enforceAuthWall() {
+  const role = state.currentView;
   
+  if (role === "customer" && (!state.currentUser || state.currentUser.role !== "customer")) {
+    document.getElementById("auth-customer-dialog").showModal();
+    return false;
+  }
+  
+  if (role === "chef" && (!state.currentUser || state.currentUser.role !== "chef")) {
+    document.getElementById("auth-chef-dialog").showModal();
+    return false;
+  }
+  
+  updateAuthUI();
+  return true;
+}
+
+function updateAuthUI() {
+  const authStatus = document.getElementById("auth-status");
+  const authEmail = document.getElementById("auth-user-email");
+  
+  if (state.currentUser) {
+    authStatus.style.display = "flex";
+    authEmail.textContent = state.currentUser.email;
+  } else {
+    authStatus.style.display = "none";
+  }
+}
+
+window.handleLogout = function() {
+  state.currentUser = null;
+  showToast("Logged Out", "You have been logged out successfully.", "success");
+  
+  // Reset view to customer and trigger auth wall
+  state.currentView = "customer";
+  document.getElementById("btn-customer-view").click(); // Will trigger enforceAuthWall
+};
+
+// Customer Tabs
+window.switchCustomerAuthTab = function(tab) {
+  document.getElementById("tab-cust-login").classList.toggle("active", tab === "login");
+  document.getElementById("tab-cust-signup").classList.toggle("active", tab === "signup");
+  document.getElementById("tab-cust-login").classList.toggle("btn-primary", tab === "login");
+  document.getElementById("tab-cust-login").classList.toggle("btn-secondary", tab !== "login");
+  document.getElementById("tab-cust-signup").classList.toggle("btn-primary", tab === "signup");
+  document.getElementById("tab-cust-signup").classList.toggle("btn-secondary", tab !== "signup");
+  
+  document.getElementById("customer-login-form").style.display = tab === "login" ? "block" : "none";
+  document.getElementById("customer-signup-form").style.display = tab === "signup" ? "block" : "none";
+};
+
+// Chef Tabs
+window.switchChefAuthTab = function(tab) {
+  document.getElementById("tab-chef-login").classList.toggle("active", tab === "login");
+  document.getElementById("tab-chef-signup").classList.toggle("active", tab === "signup");
+  document.getElementById("tab-chef-login").classList.toggle("btn-primary", tab === "login");
+  document.getElementById("tab-chef-login").classList.toggle("btn-secondary", tab !== "login");
+  document.getElementById("tab-chef-signup").classList.toggle("btn-primary", tab === "signup");
+  document.getElementById("tab-chef-signup").classList.toggle("btn-secondary", tab !== "signup");
+  
+  document.getElementById("chef-login-form").style.display = tab === "login" ? "block" : "none";
+  document.getElementById("chef-signup-form").style.display = tab === "signup" ? "block" : "none";
+};
+
+// Customer Handlers
+window.handleCustomerLogin = function() {
+  const email = document.getElementById("cust-login-email").value;
+  state.currentUser = { role: "customer", email: email };
+  document.getElementById("auth-customer-dialog").close();
+  switchWorkspace("customer");
+  showToast("Welcome Back", "Successfully logged into Customer Portal", "success");
+};
+
+window.handleCustomerSignup = function() {
+  const name = document.getElementById("cust-signup-name").value;
+  const email = document.getElementById("cust-signup-email").value;
+  state.currentUser = { role: "customer", email: email, name: name };
+  document.getElementById("auth-customer-dialog").close();
+  switchWorkspace("customer");
+  showToast("Account Created", "Welcome to CaterEase!", "success");
+};
+
+// Chef Handlers
+window.handleChefLogin = function() {
+  const email = document.getElementById("chef-login-email").value;
+  const id = document.getElementById("chef-login-id").value;
+  
+  // Basic validation (simulated)
+  if (!id.startsWith("chef-")) {
+    showToast("Login Failed", "Invalid Chef ID.", "error");
+    return;
+  }
+  
+  state.currentUser = { role: "chef", email: email, chefId: id };
+  document.getElementById("auth-chef-dialog").close();
+  switchWorkspace("chef");
+  showToast("Welcome Back Chef", "Successfully logged into Kitchen Dashboard", "success");
+};
+
+window.handleChefSignup = function() {
+  const email = document.getElementById("chef-signup-email").value;
   const name = document.getElementById("onboard-name").value;
   const specialties = document.getElementById("onboard-specialties").value;
   const price = parseInt(document.getElementById("onboard-price").value);
-  const locX = parseInt(document.getElementById("onboard-loc-x").value);
-  const locY = parseInt(document.getElementById("onboard-loc-y").value);
-  
   const dietaryCheckboxes = document.querySelectorAll('input[name="onboard-diet"]:checked');
   const dietary = Array.from(dietaryCheckboxes).map(cb => cb.value);
+  const fssai = document.getElementById("onboard-fssai").value;
   
+  const submitBtn = document.getElementById("btn-chef-signup-submit");
+  const gpsStatus = document.getElementById("gps-status");
+  
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Locating via GPS...";
+  gpsStatus.textContent = "Fetching coordinates...";
+  
+  // Automatically fetch GPS via browser geolocation API
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        // Map real world lat/lng to our 500x500 mock coordinate space for simulation
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        // Simple mock mapping
+        const locX = Math.floor(Math.abs(lng) % 500);
+        const locY = Math.floor(Math.abs(lat) % 500);
+        
+        finalizeChefSignup(name, email, specialties, price, locX, locY, dietary, fssai);
+      },
+      (error) => {
+        console.warn("GPS Error:", error);
+        gpsStatus.textContent = "GPS Access Denied. Using Default Coordinates.";
+        // Fallback
+        setTimeout(() => {
+           finalizeChefSignup(name, email, specialties, price, 250, 250, dietary, fssai);
+        }, 1000);
+      },
+      { timeout: 5000 }
+    );
+  } else {
+    gpsStatus.textContent = "Geolocation not supported. Using Default Coordinates.";
+    setTimeout(() => {
+       finalizeChefSignup(name, email, specialties, price, 250, 250, dietary, fssai);
+    }, 1000);
+  }
+};
+
+function finalizeChefSignup(name, email, specialties, price, locX, locY, dietary, fssai) {
   const newChef = {
     id: "chef-" + Date.now(),
     name: name,
+    email: email,
+    fssai: fssai,
     type: specialties.split(",")[0] || "General Caterer",
     rating: 0.0,
     reviews: 0,
     basePrice: price,
-    avatar: "https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&q=80&w=200", // Default avatar
+    avatar: "https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&q=80&w=200",
     specialties: specialties,
     dietary: dietary,
     x: locX,
     y: locY,
-    kitchenSpecs: "Awaiting inspection details...",
+    kitchenSpecs: "Pending FSSAI verification (" + fssai + ")",
     courses: {
       appetizers: [{ name: "Chef's Special Appetizer", modifier: 0, dietary: dietary, allergens: [] }],
       mains: [{ name: "Chef's Signature Main", modifier: 100, dietary: dietary, allergens: [] }],
@@ -1844,17 +1985,25 @@ function handleChefOnboardingSubmit(e) {
   
   PENDING_CHEFS.push(newChef);
   
-  document.getElementById("chef-onboarding-dialog").close();
-  e.target.reset();
+  // Log them in as a pending chef
+  state.currentUser = { role: "chef", email: email, chefId: newChef.id, status: "pending" };
   
-  showToast("Application Submitted", "Your chef profile is under review by our admin team.", "success");
+  const submitBtn = document.getElementById("btn-chef-signup-submit");
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Submit Application";
   
-  // Re-render admin view if currently in admin view
+  document.getElementById("auth-chef-dialog").close();
+  document.getElementById("chef-signup-form").reset();
+  
+  switchWorkspace("chef");
+  showToast("Application Submitted", "Your chef profile is pending admin review.", "success");
+  
   if (state.currentView === "admin") {
     renderPendingChefs();
   }
 }
 
+// 15. Admin Approval Logic
 function renderPendingChefs() {
   const container = document.getElementById("pending-chefs-list");
   const countSpan = document.getElementById("pending-chef-count");
@@ -1872,16 +2021,18 @@ function renderPendingChefs() {
         <div>
           <span class="booking-id" style="font-size: 0.8rem; color: var(--text-secondary);">ID: ${chef.id}</span>
           <h4 style="margin: 0.25rem 0; font-family: var(--font-heading); color: var(--navy-accent); font-size: 1.1rem;">${chef.name}</h4>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">${chef.email}</p>
         </div>
         <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #b45309; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">Pending Review</span>
       </div>
-      <div class="booking-details mt-2" style="font-size: 0.9rem;">
-        <p style="margin-bottom: 0.25rem;"><strong>Specialties:</strong> ${chef.specialties}</p>
-        <p style="margin-bottom: 0.25rem;"><strong>Base Price:</strong> ₹${chef.basePrice} / Plate</p>
-        <p style="margin-bottom: 0.25rem;"><strong>Coordinates:</strong> (${chef.x}, ${chef.y})</p>
+      <div class="booking-details mt-3" style="font-size: 0.9rem; background: rgba(0,0,0,0.02); padding: 1rem; border-radius: 6px;">
+        <p style="margin-bottom: 0.4rem;"><strong>Specialties:</strong> ${chef.specialties}</p>
+        <p style="margin-bottom: 0.4rem;"><strong>Base Price:</strong> ₹${chef.basePrice} / Plate</p>
+        <p style="margin-bottom: 0.4rem;"><strong>GPS Coordinates:</strong> (${chef.x}, ${chef.y})</p>
+        <p style="margin-bottom: 0;"><strong>FSSAI License:</strong> <span style="font-family: monospace; background: #e2e8f0; padding: 0.1rem 0.4rem; border-radius: 3px;">${chef.fssai}</span></p>
       </div>
       <div class="booking-actions mt-3">
-        <button class="btn-success btn-sm" onclick="approveChef('${chef.id}')">Verify & Approve</button>
+        <button class="btn-success btn-sm" onclick="approveChef('${chef.id}')">Verify FSSAI & Approve</button>
       </div>
     </div>
   `).join('');
@@ -1891,17 +2042,13 @@ window.approveChef = function(chefId) {
   const index = PENDING_CHEFS.findIndex(c => c.id === chefId);
   if (index > -1) {
     const approvedChef = PENDING_CHEFS.splice(index, 1)[0];
+    approvedChef.kitchenSpecs = "FSSAI Verified (" + approvedChef.fssai + ")";
     CHEFS.push(approvedChef);
     
-    // Re-render dropdowns
     populateChefSelect();
-    
-    // Re-render Admin View
     renderPendingChefs();
-    
-    // Re-render Map to show new chef
     drawGeoMap();
     
-    showToast("Chef Approved", `${approvedChef.name} is now live on the platform!`, "success");
+    showToast("Chef Approved", `${approvedChef.name} is now verified and live!`, "success");
   }
 };

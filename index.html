@@ -106,18 +106,22 @@
           and secure event bookings built on trust and convenience.
         </p>
 
-        <div class="hero-cta-group">
-          <div class="hero-cta-card" onclick="switchWorkspace('customer')">
-            <div class="card-icon">🍳</div>
-            <h3>Explore Marketplace</h3>
-            <p>Find local chefs, customize menus, see instant quotes, and secure your event catering.</p>
-            <button class="btn-primary">Browse as Host</button>
+        <!-- India Food Market Highlights -->
+        <div class="hero-cta-group" style="margin-top: 1.5rem; max-width: 960px;">
+          <div class="hero-cta-card" style="width: 100%; max-width: 290px; text-align: left; align-items: flex-start; cursor: default;">
+            <div class="card-icon" style="color: var(--orange);">📊</div>
+            <h3>₹1.5 Lakh Cr Market</h3>
+            <p style="margin-bottom: 0;">The Indian wedding and social event catering market is growing at a massive 20% CAGR, moving towards bespoke local home chef menus.</p>
           </div>
-          <div class="hero-cta-card" onclick="switchWorkspace('chef')">
-            <div class="card-icon">🧑‍🍳</div>
-            <h3>Join as Partner Chef</h3>
-            <p>Create your custom kitchen listing, receive booking notifications, and expand your culinary business.</p>
-            <button class="btn-secondary">Partner with Us</button>
+          <div class="hero-cta-card" style="width: 100%; max-width: 290px; text-align: left; align-items: flex-start; cursor: default;">
+            <div class="card-icon" style="color: var(--orange);">🥗</div>
+            <h3>The Home Chef Rise</h3>
+            <p style="margin-bottom: 0;">Authentic, regional family recipe thalis (traditional Sadhya, Dum Biryani, Jain cuisines) are rapidly replacing generic industrial hotel buffet lines.</p>
+          </div>
+          <div class="hero-cta-card" style="width: 100%; max-width: 290px; text-align: left; align-items: flex-start; cursor: default;">
+            <div class="card-icon" style="color: var(--orange);">🔗</div>
+            <h3>Dynamic Proximity</h3>
+            <p style="margin-bottom: 0;">CaterEase matches regional culinary experts operating directly within local neighborhoods via real-time geofenced routing.</p>
           </div>
         </div>
       </div>
@@ -453,14 +457,7 @@
         <div class="dashboard-sidebar">
           
           <div class="chef-profile-card glass-panel text-center">
-            <div class="form-group" style="width: 100%; margin-bottom: 0.5rem; text-align: left;">
-              <label for="chef-select-profile" style="color: var(--orange-light);">Active Chef Account</label>
-              <select id="chef-select-profile" style="width: 100%; background: var(--bg-primary); color: var(--text-primary); padding: 0.5rem; border: 1px solid var(--glass-border); border-radius: var(--radius-sm); font-family: var(--font-heading); font-weight: 500;">
-                <option value="chef-aravind">Chef Aravind Nair</option>
-                <option value="chef-meera">Chef Meera Sodha</option>
-                <option value="chef-rohan">Chef Rohan Mehta</option>
-              </select>
-            </div>
+            <!-- Dropdown removed for single-user perspective -->
             <div class="avatar-container">
               <img id="chef-dashboard-avatar-img" src="https://images.unsplash.com/photo-1577219491135-ce391730fb2c?auto=format&fit=crop&q=80&w=200" alt="Chef Aravind" class="chef-dashboard-avatar">
               <span id="chef-badge-status" class="badge-status-dot pending"></span>
@@ -500,43 +497,48 @@
             <p class="panel-subtitle">Government ID checks, local background checks, and health license verification.</p>
             
             <div class="verification-steps">
-              <!-- ID Check -->
-              <div class="step-item completed" id="v-step-identity">
-                <div class="step-icon">✓</div>
+              <!-- Aadhaar Card Check -->
+              <div class="step-item" id="v-step-aadhar">
+                <div class="step-icon status-pending" id="v-icon-aadhar">!</div>
                 <div class="step-info">
-                  <strong>ID Verification</strong>
-                  <span>Verified with government records.</span>
+                  <strong>Aadhaar Card *</strong>
+                  <span id="v-text-aadhar" style="color: var(--danger); font-weight: 500;">Required to receive orders</span>
                 </div>
+                <input type="file" id="input-upload-aadhar" style="display: none;" onchange="handleDocumentUpload('aadhar')">
+                <button class="btn-verify-small" id="btn-upload-aadhar" onclick="document.getElementById('input-upload-aadhar').click()">Upload</button>
               </div>
 
-              <!-- Background Check -->
-              <div class="step-item" id="v-step-background">
-                <div class="step-icon status-spinner"></div>
+              <!-- PCC Check -->
+              <div class="step-item" id="v-step-pcc">
+                <div class="step-icon status-pending" id="v-icon-pcc">!</div>
                 <div class="step-info">
-                  <strong>Background Check</strong>
-                  <span>Verification of a clean record.</span>
+                  <strong>Police Clearance (PCC)</strong>
+                  <span id="v-text-pcc">Verification of clean record</span>
                 </div>
-                <button class="btn-verify-small" id="btn-trigger-checkr">Verify</button>
+                <input type="file" id="input-upload-pcc" style="display: none;" onchange="handleDocumentUpload('pcc')">
+                <button class="btn-verify-small" id="btn-upload-pcc" onclick="document.getElementById('input-upload-pcc').click()">Upload</button>
               </div>
 
               <!-- FSSAI License -->
-              <div class="step-item" id="v-step-servsafe">
-                <div class="step-icon status-pending">!</div>
+              <div class="step-item" id="v-step-license">
+                <div class="step-icon status-pending" id="v-icon-license">!</div>
                 <div class="step-info">
-                  <strong>Food Safety License (FSSAI)</strong>
-                  <span>Requires a 14-digit government license.</span>
+                  <strong>FSSAI License</strong>
+                  <span id="v-text-license">Government food health license</span>
                 </div>
-                <button class="btn-verify-small" id="btn-upload-servsafe">Enter Details</button>
+                <input type="file" id="input-upload-license" style="display: none;" onchange="handleDocumentUpload('license')">
+                <button class="btn-verify-small" id="btn-upload-license" onclick="document.getElementById('input-upload-license').click()">Upload</button>
               </div>
 
               <!-- Kitchen Check -->
-              <div class="step-item" id="v-step-kitchen">
-                <div class="step-icon status-pending">!</div>
+              <div class="step-item" id="v-step-inspection">
+                <div class="step-icon status-pending" id="v-icon-inspection">!</div>
                 <div class="step-info">
                   <strong>Kitchen Inspection</strong>
-                  <span>Submit kitchen inspection details.</span>
+                  <span id="v-text-inspection">Submit kitchen inspection report</span>
                 </div>
-                <button class="btn-verify-small" id="btn-upload-kitchen">Verify</button>
+                <input type="file" id="input-upload-inspection" style="display: none;" onchange="handleDocumentUpload('inspection')">
+                <button class="btn-verify-small" id="btn-upload-inspection" onclick="document.getElementById('input-upload-inspection').click()">Upload</button>
               </div>
             </div>
           </div>
@@ -544,6 +546,19 @@
 
         <!-- Bookings & Orders Management -->
         <div class="dashboard-main">
+
+          <!-- Aadhaar Warning Banner -->
+          <div id="aadhaar-warning-banner" class="glass-panel mb-4" style="border: 1.5px solid var(--danger); background: rgba(239, 68, 68, 0.05); padding: 1.25rem;">
+            <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+              <span style="font-size: 1.35rem; line-height: 1;">⚠️</span>
+              <div>
+                <h4 style="color: var(--danger); font-size: 1.05rem; margin-bottom: 0.25rem; font-weight: 600;">Aadhaar Verification Mandatory</h4>
+                <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.5; margin: 0;">
+                  Under platform security regulations, **you will not be able to receive or accept customer orders** until you upload your Aadhaar Card in the Verification Status panel.
+                </p>
+              </div>
+            </div>
+          </div>
 
           <!-- CHEF PROFILE & REGISTRATION CARD -->
           <div class="chef-profile-banner glass-panel mb-4">
@@ -569,6 +584,10 @@
               <div class="form-group" style="margin-bottom: 0;">
                 <label for="chef-state-input">State</label>
                 <input type="text" id="chef-state-input" value="Maharashtra" style="padding: 0.4rem; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: var(--bg-primary); color: var(--text-primary); width: 100%;">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="chef-avatar-input">Profile Picture URL</label>
+                <input type="text" id="chef-avatar-input" style="padding: 0.4rem; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: var(--bg-primary); color: var(--text-primary); width: 100%;">
               </div>
               <div class="form-group" style="margin-bottom: 0; display: flex; gap: 0.5rem; align-items: flex-end;">
                 <button type="button" id="btn-chef-gps" class="btn-secondary" style="padding: 0.4rem; height: 38px; display: flex; align-items: center; justify-content: center; gap: 0.25rem; flex: 1;">📍 GPS</button>
@@ -970,10 +989,6 @@
             <label class="checkbox-item"><input type="checkbox" name="onboard-diet" value="non_veg"> Non-Veg</label>
             <label class="checkbox-item"><input type="checkbox" name="onboard-diet" value="jain"> Jain</label>
           </div>
-        </div>
-        <div class="form-group">
-          <label>FSSAI License Number</label>
-          <input type="text" id="onboard-fssai" required placeholder="14-digit registration number">
         </div>
         <button type="submit" id="btn-chef-signup-submit" class="btn-primary w-100">Submit Application</button>
       </form>

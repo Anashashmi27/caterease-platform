@@ -507,6 +507,7 @@ function setupEventListeners() {
     const specialties = document.getElementById("chef-specialties-input").value.trim();
     const price = parseInt(document.getElementById("chef-price-input").value) || 500;
     const city = document.getElementById("chef-city-input").value.trim();
+    const avatarUrl = document.getElementById("chef-avatar-input").value.trim();
     
     const activeChef = CHEFS.find(c => c.id === state.currentChefId) || PENDING_CHEFS.find(c => c.id === state.currentChefId);
     if (activeChef) {
@@ -514,6 +515,11 @@ function setupEventListeners() {
       activeChef.specialties = specialties;
       activeChef.type = specialties.split(",")[0] || "General Caterer";
       activeChef.basePrice = price;
+      
+      if (avatarUrl) {
+        activeChef.avatar = avatarUrl;
+        document.getElementById("chef-dashboard-avatar-img").src = avatarUrl;
+      }
       
       if (city !== "GPS Location" && city !== "") {
         const coords = geocodeCity(city);
@@ -532,7 +538,6 @@ function setupEventListeners() {
       localStorage.setItem("caterease_pending_chefs", JSON.stringify(PENDING_CHEFS));
 
       // Refresh views
-      populateChefSelect();
       renderChefGrid(CHEFS);
       drawGeoMap();
       
@@ -552,10 +557,10 @@ function setupEventListeners() {
           const lng = position.coords.longitude;
           const mapped = gpsToCanvas(lat, lng);
           
-          const aravind = CHEFS.find(c => c.id === "chef-aravind");
-          if (aravind) {
-            aravind.x = Math.round(mapped.x);
-            aravind.y = Math.round(mapped.y);
+          const activeChef = CHEFS.find(c => c.id === state.currentChefId) || PENDING_CHEFS.find(c => c.id === state.currentChefId);
+          if (activeChef) {
+            activeChef.x = Math.round(mapped.x);
+            activeChef.y = Math.round(mapped.y);
           }
           
           showToast("Reverse Geocoding", "Resolving place name from coordinates...", "success");
@@ -577,28 +582,21 @@ function setupEventListeners() {
     }
   });
 
-  // Trust Verification Buttons
-  document.getElementById("btn-trigger-checkr").addEventListener("click", speedUpBackgroundCheck);
-  document.getElementById("btn-upload-servsafe").addEventListener("click", () => openVerificationDialog("servsafe"));
-  document.getElementById("btn-upload-kitchen").addEventListener("click", () => openVerificationDialog("kitchen"));
-
-  // Dialog Controls
-  document.getElementById("btn-dialog-cancel").addEventListener("click", () => {
-    document.getElementById("upload-dialog").close();
-  });
-  document.getElementById("dialog-form").addEventListener("submit", handleDialogSubmit);
-
   // Standby Simulation
   document.getElementById("btn-simulate-cancel").addEventListener("click", triggerEmergencyStandbySimulation);
   document.getElementById("btn-close-standby").addEventListener("click", () => {
     document.getElementById("standby-dialog").close();
   });
 
-  // Active Chef Profile Select Switcher
-  document.getElementById("chef-select-profile").addEventListener("change", (e) => {
-    state.currentChefId = e.target.value;
+  // Helper to load current logged-in Chef details into dashboard and forms
+  window.loadCurrentChefDetails = function() {
+    if (state.currentUser && state.currentUser.role === "chef") {
+      state.currentChefId = state.currentUser.chefId;
+    } else {
+      // Default fallback for demo/admin view
+      state.currentChefId = "chef-aravind";
+    }
     
-    // Update Chef dashboard view details based on chef selection
     const activeChef = CHEFS.find(c => c.id === state.currentChefId) || PENDING_CHEFS.find(c => c.id === state.currentChefId);
     if (activeChef) {
       document.getElementById("chef-dashboard-avatar-img").src = activeChef.avatar;
@@ -609,13 +607,26 @@ function setupEventListeners() {
       document.getElementById("chef-name-input").value = activeChef.name;
       document.getElementById("chef-specialties-input").value = activeChef.specialties || activeChef.type;
       document.getElementById("chef-price-input").value = activeChef.basePrice;
+      document.getElementById("chef-avatar-input").value = activeChef.avatar || "";
       
-      // Update matching badge status randomly to simulate dynamic check statuses
+      // Load location city if exists
+      if (activeChef.x && activeChef.y) {
+        // Reverse geocode matching city/locality
+        const resolved = reverseGeocode(activeChef.y, activeChef.x);
+        resolved.then(place => {
+          document.getElementById("chef-city-input").value = place.locality;
+          document.getElementById("chef-state-input").value = place.state;
+        }).catch(() => {
+          document.getElementById("chef-city-input").value = "GPS Location";
+        });
+      }
+      
+      // Update matching badge status based on verified state
       const badge = document.getElementById("chef-badge-status");
       const tag = document.getElementById("verification-status-tag");
       const isPending = PENDING_CHEFS.some(c => c.id === state.currentChefId);
       
-      if (state.currentChefId === "chef-aravind" || isPending) {
+      if (isPending) {
         badge.className = "badge-status-dot pending";
         tag.className = "verification-status-tag pending";
         tag.textContent = "Verification Pending";
@@ -624,10 +635,89 @@ function setupEventListeners() {
         tag.className = "verification-status-tag verified";
         tag.textContent = "✓ Verified Partner";
       }
+      
+      updateVerificationUI();
+      renderChefPendingOrders();
+    }
+  };
+
+  // Helper to handle file uploads for safety verification
+  window.handleDocumentUpload = function(docType) {
+    const activeChef = CHEFS.find(c => c.id === state.currentChefId) || PENDING_CHEFS.find(c => c.id === state.currentChefId);
+    if (!activeChef) {
+      showToast("Error", "No active chef profile found.", "danger");
+      return;
     }
     
+    if (!activeChef.documentStatus) {
+      activeChef.documentStatus = { aadhar: false, pcc: false, license: false, inspection: false };
+    }
+    
+    activeChef.documentStatus[docType] = true;
+    
+    // Save updated databases to localStorage
+    localStorage.setItem("caterease_chefs", JSON.stringify(CHEFS));
+    localStorage.setItem("caterease_pending_chefs", JSON.stringify(PENDING_CHEFS));
+    
+    // Update UI
+    updateVerificationUI();
     renderChefPendingOrders();
-  });
+    
+    showToast("Document Uploaded", `${docType.toUpperCase()} uploaded successfully!`, "success");
+  };
+
+  // Update verification items on the dashboard
+  window.updateVerificationUI = function() {
+    const activeChef = CHEFS.find(c => c.id === state.currentChefId) || PENDING_CHEFS.find(c => c.id === state.currentChefId);
+    if (!activeChef) return;
+    
+    if (!activeChef.documentStatus) {
+      const isDefault = ["chef-aravind", "chef-meera", "chef-rohan"].includes(activeChef.id);
+      activeChef.documentStatus = {
+        aadhar: isDefault,
+        pcc: isDefault,
+        license: isDefault,
+        inspection: isDefault
+      };
+    }
+    
+    const docs = activeChef.documentStatus;
+    
+    const updateStep = (type, isDone) => {
+      const item = document.getElementById(`v-step-${type}`);
+      const icon = document.getElementById(`v-icon-${type}`);
+      const btn = document.getElementById(`btn-upload-${type}`);
+      const text = document.getElementById(`v-text-${type}`);
+      
+      if (item && icon && btn) {
+        if (isDone) {
+          item.classList.add("completed");
+          icon.className = "step-icon";
+          icon.textContent = "✓";
+          btn.textContent = "Re-upload";
+          btn.classList.replace("btn-primary", "btn-secondary");
+          if (text) text.textContent = "Document uploaded & verified.";
+        } else {
+          item.classList.remove("completed");
+          icon.className = "step-icon status-pending";
+          icon.textContent = "!";
+          btn.textContent = "Upload";
+          btn.classList.replace("btn-secondary", "btn-primary");
+          if (text) text.textContent = type === "aadhar" ? "Required to receive orders." : "Required for verified profile status.";
+        }
+      }
+    };
+    
+    updateStep("aadhar", docs.aadhar);
+    updateStep("pcc", docs.pcc);
+    updateStep("license", docs.license);
+    updateStep("inspection", docs.inspection);
+    
+    const warningBanner = document.getElementById("aadhaar-warning-banner");
+    if (warningBanner) {
+      warningBanner.style.display = docs.aadhar ? "none" : "block";
+    }
+  };
 
   // AI Menu Personalizer Trigger
   document.getElementById("btn-ai-personalize").addEventListener("click", handleAIPersonalization);
@@ -726,7 +816,7 @@ function switchWorkspace(role) {
   document.getElementById("admin-workspace").classList.toggle("active", role === "admin");
 
   if (role === "chef") {
-    populateChefSelect();
+    if (window.loadCurrentChefDetails) window.loadCurrentChefDetails();
   }
 
   if (role === "admin") {
@@ -1238,6 +1328,22 @@ function completeStandbyRerouting() {
 function renderChefPendingOrders() {
   const panel = document.getElementById("panel-pending-orders");
   if (!panel) return;
+  
+  const activeChef = CHEFS.find(c => c.id === state.currentChefId) || PENDING_CHEFS.find(c => c.id === state.currentChefId);
+  const hasAadhar = activeChef && activeChef.documentStatus && activeChef.documentStatus.aadhar;
+  
+  if (!hasAadhar) {
+    panel.innerHTML = `
+      <div class="text-center p-4" style="border: 1.5px dashed var(--danger); border-radius: 8px; margin: 1rem 0; background: rgba(239, 68, 68, 0.02);">
+        <p style="color: var(--danger); font-weight: 600; margin-bottom: 0.5rem; font-size: 1.05rem;">⚠️ Order Intake Suspended</p>
+        <p class="text-secondary" style="font-size: 0.85rem; margin: 0; line-height: 1.5;">
+          You must upload your Aadhaar Card in the Verification Status panel before you can receive, view, or accept customer booking requests.
+        </p>
+      </div>
+    `;
+    document.getElementById("req-count").textContent = "0";
+    return;
+  }
   
   const list = state.bookings.filter(b => b.chefId === state.currentChefId);
   document.getElementById("req-count").textContent = list.length;
@@ -1996,7 +2102,6 @@ window.handleChefSignup = function() {
   const price = parseInt(document.getElementById("onboard-price").value);
   const dietaryCheckboxes = document.querySelectorAll('input[name="onboard-diet"]:checked');
   const dietary = Array.from(dietaryCheckboxes).map(cb => cb.value);
-  const fssai = document.getElementById("onboard-fssai").value;
   
   const submitBtn = document.getElementById("btn-chef-signup-submit");
   const gpsStatus = document.getElementById("gps-status");
@@ -2016,14 +2121,14 @@ window.handleChefSignup = function() {
         const locX = Math.floor(Math.abs(lng) % 500);
         const locY = Math.floor(Math.abs(lat) % 500);
         
-        finalizeChefSignup(name, email, specialties, price, locX, locY, dietary, fssai);
+        finalizeChefSignup(name, email, specialties, price, locX, locY, dietary);
       },
       (error) => {
         console.warn("GPS Error:", error);
         gpsStatus.textContent = "GPS Access Denied. Using Default Coordinates.";
         // Fallback
         setTimeout(() => {
-           finalizeChefSignup(name, email, specialties, price, 250, 250, dietary, fssai);
+           finalizeChefSignup(name, email, specialties, price, 250, 250, dietary);
         }, 1000);
       },
       { timeout: 5000 }
@@ -2031,29 +2136,29 @@ window.handleChefSignup = function() {
   } else {
     gpsStatus.textContent = "Geolocation not supported. Using Default Coordinates.";
     setTimeout(() => {
-       finalizeChefSignup(name, email, specialties, price, 250, 250, dietary, fssai);
+       finalizeChefSignup(name, email, specialties, price, 250, 250, dietary);
     }, 1000);
   }
 };
 
-function finalizeChefSignup(name, email, specialties, price, locX, locY, dietary, fssai) {
+function finalizeChefSignup(name, email, specialties, price, locX, locY, dietary) {
   // Generate a unique 8-digit ID
   let random8Digit;
   let isUnique = false;
   while (!isUnique) {
     random8Digit = Math.floor(10000000 + Math.random() * 90000000);
-    const mockId = "chef-" + random8Digit;
+    const mockId = String(random8Digit);
     if (!CHEFS.some(c => c.id === mockId) && !PENDING_CHEFS.some(c => c.id === mockId)) {
       isUnique = true;
     }
   }
-  const chefId = "chef-" + random8Digit;
+  const chefId = String(random8Digit);
 
   const newChef = {
     id: chefId,
     name: name,
     email: email,
-    fssai: fssai,
+    fssai: "Pending Upload",
     type: specialties.split(",")[0] || "General Caterer",
     rating: 0.0,
     reviews: 0,
@@ -2063,7 +2168,13 @@ function finalizeChefSignup(name, email, specialties, price, locX, locY, dietary
     dietary: dietary,
     x: locX,
     y: locY,
-    kitchenSpecs: "Pending FSSAI verification (" + fssai + ")",
+    kitchenSpecs: "Pending FSSAI verification",
+    documentStatus: {
+      aadhar: false,
+      pcc: false,
+      license: false,
+      inspection: false
+    },
     courses: {
       appetizers: [{ name: "Chef's Special Appetizer", modifier: 0, dietary: dietary, allergens: [] }],
       mains: [{ name: "Chef's Signature Main", modifier: 100, dietary: dietary, allergens: [] }],
@@ -2081,10 +2192,20 @@ function finalizeChefSignup(name, email, specialties, price, locX, locY, dietary
   document.getElementById("auth-chef-dialog").close();
   document.getElementById("chef-signup-form").reset();
   
-  // Show pop-up message requested by user
+  // Show pop-up message and simulated email
   const alertDialog = document.getElementById("generic-alert-dialog");
-  document.getElementById("alert-dialog-title").textContent = "FSSAI Review Notice";
-  document.getElementById("alert-dialog-message").textContent = "Your FSSAI ID is being reviewed and your Chef ID will be mailed after the verification.";
+  document.getElementById("alert-dialog-title").textContent = "FSSAI Review & Chef ID Notice";
+  document.getElementById("alert-dialog-message").innerHTML = `
+    <p>Your FSSAI ID is being reviewed and your Chef ID will be mailed after the verification.</p>
+    <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 1rem 0;">
+    <div style="text-align: left; background: rgba(30, 58, 138, 0.05); padding: 1rem; border-radius: var(--radius-md);">
+      <h5 style="margin-top: 0; margin-bottom: 0.5rem; color: var(--navy-dark);">📧 Simulated Email Sent</h5>
+      <strong>To:</strong> ${email}<br>
+      <strong>Subject:</strong> Welcome to CaterEase!<br><br>
+      Your registration is submitted. Your unique 8-digit Chef ID is:<br>
+      <span style="font-family: monospace; font-size: 1.25rem; font-weight: bold; color: var(--orange); background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 4px; display: inline-block; margin-top: 0.25rem;">${chefId}</span>
+    </div>
+  `;
   alertDialog.showModal();
   
   switchWorkspace("home");

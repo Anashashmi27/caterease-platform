@@ -702,6 +702,10 @@ function switchWorkspace(role) {
   document.getElementById("chef-workspace").classList.toggle("active", role === "chef");
   document.getElementById("admin-workspace").classList.toggle("active", role === "admin");
 
+  if (role === "chef") {
+    populateChefSelect();
+  }
+
   if (role === "admin") {
     renderPendingChefs();
   }

@@ -2097,6 +2097,54 @@ window.handleChefLogin = function() {
              
   if (chef) {
     state.currentUser = { role: "chef", email: email, chefId: id };
+    
+    // Auto-generate realistic mock orders for this chef to test receiving immediately!
+    const chefBookings = state.bookings.filter(b => b.chefId === id);
+    if (chefBookings.length === 0) {
+      const mockOrders = [
+        {
+          id: "IN-" + Math.floor(10000 + Math.random() * 90000),
+          clientName: "Rahul Sharma",
+          date: "July 18, 2026 @ 8:00 PM (IST)",
+          location: "Hiranandani Gardens, Powai, Mumbai",
+          guests: 25,
+          amount: `₹${Math.round(chef.basePrice * 25 * 1.15).toLocaleString('en-IN')}`,
+          chefId: id,
+          chefName: chef.name,
+          status: 'requested',
+          customRequest: "Please keep the gravies moderately spicy and include extra garlic naan.",
+          messages: [],
+          menu: {
+            appetizers: chef.specialties ? chef.specialties.split(",")[0] : "Traditional Starters",
+            mains: chef.specialties ? chef.specialties.split(",")[1] || "Regional Mains" : "Special Main Course",
+            desserts: "Warm Gulab Jamun with Rabri"
+          },
+          kitchenSpecs: chef.kitchenSpecs || "Standard gas stove support."
+        },
+        {
+          id: "IN-" + Math.floor(10000 + Math.random() * 90000),
+          clientName: "Ananya Deshmukh",
+          date: "July 22, 2026 @ 1:30 PM (IST)",
+          location: "Prabhadevi Crescent, Mumbai",
+          guests: 15,
+          amount: `₹${Math.round(chef.basePrice * 15 * 1.15).toLocaleString('en-IN')}`,
+          chefId: id,
+          chefName: chef.name,
+          status: 'requested',
+          customRequest: "Require 100% pure vegetarian-friendly separate preparation.",
+          messages: [],
+          menu: {
+            appetizers: chef.specialties ? chef.specialties.split(",")[0] : "Traditional Starters",
+            mains: chef.specialties ? chef.specialties.split(",")[1] || "Regional Mains" : "Special Main Course",
+            desserts: "Kesar Pista Kulfi"
+          },
+          kitchenSpecs: chef.kitchenSpecs || "Standard gas stove support."
+        }
+      ];
+      state.bookings.push(...mockOrders);
+      localStorage.setItem("caterease_bookings", JSON.stringify(state.bookings));
+    }
+
     document.getElementById("auth-chef-dialog").close();
     switchWorkspace("chef");
     showToast("Welcome Back Chef", `Logged in as ${chef.name}`, "success");

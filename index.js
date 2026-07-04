@@ -335,9 +335,12 @@ async function reverseGeocode(lat, lng) {
     if (res.ok) {
       const data = await res.json();
       if (data && data.address) {
-        const locality = data.address.suburb || data.address.neighbourhood || data.address.residential || data.address.city_district || data.address.town || data.address.village || data.address.city || "Bandra West";
-        const state = data.address.state || "Maharashtra";
-        return { locality, state };
+        const addr = data.address;
+        const locality = addr.suburb || addr.neighbourhood || addr.village || addr.city_district || addr.subdistrict || addr.town || addr.city || "Local Area";
+        const cityOrDistrict = addr.city || addr.county || addr.state_district || "";
+        const localityString = (cityOrDistrict && cityOrDistrict !== locality) ? `${locality}, ${cityOrDistrict}` : locality;
+        const state = addr.state || "Maharashtra";
+        return { locality: localityString, state };
       }
     }
   } catch (e) {
@@ -507,7 +510,6 @@ function setupEventListeners() {
     const specialties = document.getElementById("chef-specialties-input").value.trim();
     const price = parseInt(document.getElementById("chef-price-input").value) || 500;
     const city = document.getElementById("chef-city-input").value.trim();
-    const avatarUrl = document.getElementById("chef-avatar-input").value.trim();
     
     const activeChef = CHEFS.find(c => c.id === state.currentChefId) || PENDING_CHEFS.find(c => c.id === state.currentChefId);
     if (activeChef) {
@@ -515,11 +517,6 @@ function setupEventListeners() {
       activeChef.specialties = specialties;
       activeChef.type = specialties.split(",")[0] || "General Caterer";
       activeChef.basePrice = price;
-      
-      if (avatarUrl) {
-        activeChef.avatar = avatarUrl;
-        document.getElementById("chef-dashboard-avatar-img").src = avatarUrl;
-      }
       
       if (city !== "GPS Location" && city !== "") {
         const coords = geocodeCity(city);
@@ -607,18 +604,20 @@ function setupEventListeners() {
       document.getElementById("chef-name-input").value = activeChef.name;
       document.getElementById("chef-specialties-input").value = activeChef.specialties || activeChef.type;
       document.getElementById("chef-price-input").value = activeChef.basePrice;
-      document.getElementById("chef-avatar-input").value = activeChef.avatar || "";
       
       // Load location city if exists
-      if (activeChef.x && activeChef.y) {
-        // Reverse geocode matching city/locality
-        const resolved = reverseGeocode(activeChef.y, activeChef.x);
-        resolved.then(place => {
+      if (activeChef.lat && activeChef.lng) {
+        // Reverse geocode using actual real-world GPS latitude/longitude coordinates
+        reverseGeocode(activeChef.lat, activeChef.lng).then(place => {
           document.getElementById("chef-city-input").value = place.locality;
           document.getElementById("chef-state-input").value = place.state;
         }).catch(() => {
           document.getElementById("chef-city-input").value = "GPS Location";
         });
+      } else {
+        // Fallback for default predefined static profiles
+        document.getElementById("chef-city-input").value = activeChef.id === "chef-aravind" ? "Bandra West" : activeChef.id === "chef-meera" ? "Colaba" : "Andheri East";
+        document.getElementById("chef-state-input").value = "Maharashtra";
       }
       
       // Update matching badge status based on verified state
@@ -2108,21 +2107,21 @@ window.handleChefSignup = function() {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        // Map real world lat/lng to our 500x500 mock coordinate space for simulation
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-        // Simple mock mapping
-        const locX = Math.floor(Math.abs(lng) % 500);
-        const locY = Math.floor(Math.abs(lat) % 500);
+        // Map real world lat/lng to our canvas coordinate space
+        const mapped = gpsToCanvas(lat, lng);
+        const locX = Math.round(mapped.x);
+        const locY = Math.round(mapped.y);
         
-        finalizeChefSignup(name, email, specialties, price, locX, locY, dietary);
+        finalizeChefSignup(name, email, specialties, price, locX, locY, dietary, lat, lng);
       },
       (error) => {
         console.warn("GPS Error:", error);
         gpsStatus.textContent = "GPS Access Denied. Using Default Coordinates.";
-        // Fallback
+        // Fallback to Mumbai Center
         setTimeout(() => {
-           finalizeChefSignup(name, email, specialties, price, 250, 250, dietary);
+           finalizeChefSignup(name, email, specialties, price, 150, 100, dietary, 19.0760, 72.8777);
         }, 1000);
       },
       { timeout: 5000 }
@@ -2130,12 +2129,12 @@ window.handleChefSignup = function() {
   } else {
     gpsStatus.textContent = "Geolocation not supported. Using Default Coordinates.";
     setTimeout(() => {
-       finalizeChefSignup(name, email, specialties, price, 250, 250, dietary);
+       finalizeChefSignup(name, email, specialties, price, 150, 100, dietary, 19.0760, 72.8777);
     }, 1000);
   }
 };
 
-function finalizeChefSignup(name, email, specialties, price, locX, locY, dietary) {
+function finalizeChefSignup(name, email, specialties, price, locX, locY, dietary, lat, lng) {
   // Generate a unique 8-digit ID
   let random8Digit;
   let isUnique = false;
@@ -2162,6 +2161,8 @@ function finalizeChefSignup(name, email, specialties, price, locX, locY, dietary
     dietary: dietary,
     x: locX,
     y: locY,
+    lat: lat || 19.0760,
+    lng: lng || 72.8777,
     kitchenSpecs: "Pending FSSAI verification",
     documentStatus: {
       aadhar: false,
@@ -2321,9 +2322,9 @@ window.handleChefAvatarFileSelect = function(event) {
     if (activeChef) {
       activeChef.avatar = base64Data;
       
-      // Update form text value & sidebar image instantly in real-time
-      document.getElementById("chef-avatar-input").value = base64Data;
+      // Update sidebar image instantly in real-time
       document.getElementById("chef-dashboard-avatar-img").src = base64Data;
+      document.getElementById("chef-avatar-file-name").textContent = file.name;
       
       // Save updated databases to localStorage
       localStorage.setItem("caterease_chefs", JSON.stringify(CHEFS));
@@ -2385,11 +2386,10 @@ window.syncDatabase = function() {
       document.getElementById("chef-dashboard-specialties").textContent = activeChef.type;
       
       // Avoid resetting location form inputs while chef might be typing
-      if (document.activeElement && !["chef-name-input", "chef-specialties-input", "chef-price-input", "chef-city-input", "chef-state-input", "chef-avatar-input"].includes(document.activeElement.id)) {
+      if (document.activeElement && !["chef-name-input", "chef-specialties-input", "chef-price-input", "chef-city-input", "chef-state-input"].includes(document.activeElement.id)) {
         document.getElementById("chef-name-input").value = activeChef.name;
         document.getElementById("chef-specialties-input").value = activeChef.specialties || activeChef.type;
         document.getElementById("chef-price-input").value = activeChef.basePrice;
-        document.getElementById("chef-avatar-input").value = activeChef.avatar || "";
       }
       
       updateVerificationUI();

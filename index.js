@@ -393,6 +393,14 @@ function setupEventListeners() {
   // Auth Logout
   document.getElementById("btn-logout").addEventListener("click", handleLogout);
   
+  // Chat submit form programmatic handler
+  const chatForm = document.getElementById("chat-input-form");
+  if (chatForm) {
+    chatForm.addEventListener("submit", (event) => {
+      window.handleSendChatMessage(event);
+    });
+  }
+  
   // Search action
   document.getElementById("btn-run-search").addEventListener("click", runSearchFilter);
 
@@ -1153,7 +1161,9 @@ function drawGeoMap() {
     // Label
     ctx.font = "8px sans-serif";
     ctx.fillStyle = "rgba(15, 23, 42, 0.7)";
-    ctx.fillText(chef.name.split(' ')[1], chef.x - 10, chef.y - 8);
+    const nameParts = chef.name.split(' ');
+    const displayName = nameParts[1] || nameParts[0] || "Chef";
+    ctx.fillText(displayName, chef.x - 10, chef.y - 8);
   });
 
   // Draw standby chef if active

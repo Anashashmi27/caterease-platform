@@ -276,6 +276,7 @@ document.addEventListener("DOMContentLoaded", () => {
   triggerBackgroundCheckSimulation();
   renderChefPendingOrders();
   enforceAuthWall();
+  window.updateCustomerDealsBanner();
 });
 
 // 4. Initialize UI bindings
@@ -418,6 +419,8 @@ function setupEventListeners() {
     const clientName = document.getElementById("cust-name-input").value.trim() || "Rohan Malhotra";
     const clientLocation = (document.getElementById("cust-city-input").value.trim() || "Bandra West") + ", " + (document.getElementById("cust-state-input").value.trim() || "Maharashtra");
     
+    const customRequestVal = document.getElementById("custom-dish-request").value.trim();
+
     const newBooking = {
       id: "IN-" + Math.floor(10000 + Math.random() * 90000),
       clientName: clientName,
@@ -428,6 +431,8 @@ function setupEventListeners() {
       chefId: chef.id,
       chefName: chef.name,
       status: 'requested',
+      customRequest: customRequestVal,
+      messages: [],
       menu: {
         appetizers: state.customizations.appetizer ? state.customizations.appetizer.name : "None",
         mains: state.customizations.main ? state.customizations.main.name : "None",
@@ -439,6 +444,10 @@ function setupEventListeners() {
     // Save client's active deal
     state.booking = newBooking;
     state.bookings.push(newBooking);
+    localStorage.setItem("caterease_bookings", JSON.stringify(state.bookings));
+    
+    // Clear request input
+    document.getElementById("custom-dish-request").value = "";
     
     // Update Active Deals Banner in Customer Portal
     const dealsBanner = document.getElementById("active-deals-banner");
@@ -1372,17 +1381,37 @@ function renderChefPendingOrders() {
     if (booking.status === 'deal_accepted') {
       statusClass = "pending";
       statusText = "Request Accepted - Waiting for Payment";
-      actionButtons = `<button class="btn-primary w-full" disabled style="background: var(--navy-accent); padding: 0.5rem 1rem;">Deal Confirmed - Awaiting Customer Payment</button>`;
+      actionButtons = `
+        <div style="display: flex; gap: 0.5rem; width: 100%;">
+          <button class="btn-success btn-chat-dynamic" style="padding: 0.5rem 1rem; font-size: 0.9rem; flex: 1;">💬 Chat</button>
+          <button class="btn-primary" disabled style="background: var(--navy-accent); padding: 0.5rem 1rem; flex: 1.5; font-size: 0.85rem;">Awaiting Payment</button>
+        </div>
+      `;
     } else if (booking.status === 'paid') {
       statusClass = "confirmed text-green";
       statusText = "Confirmed Event Schedule";
-      actionButtons = `<button class="btn-primary w-full" disabled style="padding: 0.5rem 1rem;">Payment Secured</button>`;
+      actionButtons = `
+        <div style="display: flex; gap: 0.5rem; width: 100%;">
+          <button class="btn-success btn-chat-dynamic" style="padding: 0.5rem 1rem; font-size: 0.9rem; flex: 1;">💬 Chat</button>
+          <button class="btn-primary" disabled style="padding: 0.5rem 1rem; flex: 1.5; font-size: 0.85rem;">Payment Secured</button>
+        </div>
+      `;
     } else if (booking.status === 'rejected') {
       statusClass = "canceled text-red";
       statusText = "Declined";
       actionButtons = `<button class="btn-secondary w-full" disabled style="padding: 0.5rem 1rem;">Proposal Declined</button>`;
     }
     
+    let customRequestBlock = "";
+    if (booking.customRequest) {
+      customRequestBlock = `
+        <div style="margin-top: 0.5rem; border-left: 3px solid var(--orange); padding-left: 0.5rem; background: rgba(239, 108, 0, 0.05); padding: 0.5rem; border-radius: var(--radius-sm); font-size: 0.85rem; margin-bottom: 0.75rem;">
+          <strong style="color: var(--orange);">Custom Request / Personal Needs:</strong>
+          <p style="margin: 0.15rem 0 0 0; color: var(--text-primary); font-style: italic;">"${booking.customRequest}"</p>
+        </div>
+      `;
+    }
+
     card.innerHTML = `
       <div class="booking-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
         <div class="booking-id-tag" style="background: var(--navy-accent); color: white; padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: bold;">ID: ${booking.id}</div>
@@ -1408,6 +1437,8 @@ function renderChefPendingOrders() {
         </div>
       </div>
 
+      ${customRequestBlock}
+
       <div class="booking-actions" style="display: flex; gap: 0.5rem;">
         ${actionButtons}
       </div>
@@ -1417,7 +1448,6 @@ function renderChefPendingOrders() {
     const acceptBtn = card.querySelector(".btn-accept-booking-dynamic");
     if (acceptBtn) {
       acceptBtn.addEventListener("click", () => {
-        // Open the Chef Billing Dialog instead of direct acceptance
         const billingDialog = document.getElementById("chef-billing-dialog");
         billingDialog.showModal();
         
@@ -1435,26 +1465,11 @@ function renderChefPendingOrders() {
           let planText = selectedOption === 'monthly' ? "Pro Plan" : "Pay-Per-Booking (10% fee)";
           showToast("Request Accepted", `Accepted via ${planText}. Waiting for customer payment.`, "success");
           
-          // Update client view if it's the client's booking
+          // Save and Sync in local storage instantly
+          localStorage.setItem("caterease_bookings", JSON.stringify(state.bookings));
+          
           if (state.booking && state.booking.id === booking.id) {
             state.booking.status = 'deal_accepted';
-            const dealsBanner = document.getElementById("active-deals-banner");
-            dealsBanner.classList.remove("hidden");
-            document.getElementById("deal-title-text").innerHTML = `🤝 Proposal Accepted by ${booking.chefName}!`;
-            document.getElementById("deal-desc-text").textContent = `The request is confirmed. Please finalize payment of ${booking.amount} to lock in the booking.`;
-            document.getElementById("deal-action-container").innerHTML = `<button id="btn-finalize-deal-payment" class="btn-success btn-sm">Pay ${booking.amount} & Confirm</button>`;
-            
-            document.getElementById("btn-finalize-deal-payment").onclick = () => {
-              booking.status = 'paid';
-              state.booking.status = 'paid';
-              
-              document.getElementById("deal-title-text").innerHTML = `🎉 Booking Confirmed & Secured`;
-              document.getElementById("deal-desc-text").textContent = `Your event with ${booking.chefName} is booked. Platform satisfaction insurance is active.`;
-              document.getElementById("deal-action-container").innerHTML = `<span class="badge-status-dot verified"></span> Confirmed & Secured`;
-              
-              showToast("Payment Secured!", `Escrow locked for ${booking.amount}. Chef notified.`, "success");
-              renderChefPendingOrders();
-            };
           }
           
           renderChefPendingOrders();
@@ -1468,17 +1483,20 @@ function renderChefPendingOrders() {
         booking.status = 'rejected';
         showToast("Request Declined", `You declined the request from ${booking.clientName}.`, "danger");
         
-        // Update client view if it's the client's booking
+        localStorage.setItem("caterease_bookings", JSON.stringify(state.bookings));
+        
         if (state.booking && state.booking.id === booking.id) {
           state.booking.status = 'rejected';
-          const dealsBanner = document.getElementById("active-deals-banner");
-          dealsBanner.classList.remove("hidden");
-          document.getElementById("deal-title-text").innerHTML = `❌ Request Declined by Chef`;
-          document.getElementById("deal-desc-text").textContent = `${booking.chefName} declined your proposal. Please customize your menu again or choose another chef.`;
-          document.getElementById("deal-action-container").innerHTML = `<span class="badge-status-dot canceled" style="background:var(--danger);"></span> Declined`;
         }
         
         renderChefPendingOrders();
+      });
+    }
+
+    const chatBtn = card.querySelector(".btn-chat-dynamic");
+    if (chatBtn) {
+      chatBtn.addEventListener("click", () => {
+        window.openChatDialog(booking.id, "chef");
       });
     }
     
@@ -2377,6 +2395,7 @@ window.syncDatabase = function() {
   if (state.currentView === "customer") {
     runSearchFilter();
     drawGeoMap();
+    window.updateCustomerDealsBanner();
   } else if (state.currentView === "chef") {
     // Pull current chef data to keep active listings synchronized
     const activeChef = CHEFS.find(c => c.id === state.currentChefId) || PENDING_CHEFS.find(c => c.id === state.currentChefId);
@@ -2398,7 +2417,188 @@ window.syncDatabase = function() {
   } else if (state.currentView === "admin") {
     renderPendingChefs();
   }
+
+  // Real-time Chat Sync refresh if dialog is open
+  const chatDialog = document.getElementById("chat-dialog");
+  if (chatDialog && chatDialog.open) {
+    window.renderChatMessages();
+  }
 };
 
 // Start periodic sync polling interval
 setInterval(window.syncDatabase, 3000);
+
+// ==========================================
+// 17. Real-Time Chat & Customer Custom Requests Handlers
+// ==========================================
+window.updateCustomerDealsBanner = function() {
+  const dealsBanner = document.getElementById("active-deals-banner");
+  if (!dealsBanner) return;
+  
+  if (!state.booking) {
+    // Look up latest booking for this session customer
+    const clientName = document.getElementById("cust-name-input") ? document.getElementById("cust-name-input").value.trim() : "Rohan Malhotra";
+    const userBookings = state.bookings.filter(b => b.clientName === clientName);
+    if (userBookings.length > 0) {
+      state.booking = userBookings[userBookings.length - 1];
+    }
+  }
+  
+  if (!state.booking) {
+    dealsBanner.classList.add("hidden");
+    return;
+  }
+  
+  // Find current synced booking details from state.bookings
+  const currentBooking = state.bookings.find(b => b.id === state.booking.id);
+  if (!currentBooking) {
+    dealsBanner.classList.add("hidden");
+    return;
+  }
+  
+  // Sync status
+  state.booking = currentBooking;
+  dealsBanner.classList.remove("hidden");
+  
+  const titleEl = document.getElementById("deal-title-text");
+  const descEl = document.getElementById("deal-desc-text");
+  const actionContainer = document.getElementById("deal-action-container");
+  
+  if (currentBooking.status === 'requested') {
+    titleEl.innerHTML = `🤝 Active Deal: Pending Chef Handshake`;
+    descEl.textContent = `Waiting for ${currentBooking.chefName} to accept your menu proposal for ${currentBooking.guests} guests.`;
+    actionContainer.innerHTML = `
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <span class="badge-status-dot pending"></span> Awaiting Chef
+        <button class="btn-secondary btn-sm" disabled style="opacity: 0.6; cursor: not-allowed; padding: 0.4rem 0.75rem;">💬 Chat Locked</button>
+      </div>
+    `;
+  } else if (currentBooking.status === 'deal_accepted') {
+    titleEl.innerHTML = `🤝 Proposal Accepted by ${currentBooking.chefName}!`;
+    descEl.textContent = `The request is confirmed. Please finalize payment of ${currentBooking.amount} to lock in the booking.`;
+    actionContainer.innerHTML = `
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <button id="btn-finalize-deal-payment" class="btn-success btn-sm" style="padding: 0.4rem 0.75rem;">Pay ${currentBooking.amount} & Confirm</button>
+        <button id="btn-customer-chat" class="btn-primary btn-sm" style="padding: 0.4rem 0.75rem;">💬 Chat</button>
+      </div>
+    `;
+    
+    // Bind actions
+    document.getElementById("btn-finalize-deal-payment").onclick = () => {
+      currentBooking.status = 'paid';
+      localStorage.setItem("caterease_bookings", JSON.stringify(state.bookings));
+      window.updateCustomerDealsBanner();
+      showToast("Payment Secured!", `Escrow locked for ${currentBooking.amount}. Chef notified.`, "success");
+    };
+    
+    document.getElementById("btn-customer-chat").onclick = () => {
+      window.openChatDialog(currentBooking.id, "customer");
+    };
+  } else if (currentBooking.status === 'paid') {
+    titleEl.innerHTML = `🎉 Booking Confirmed & Secured`;
+    descEl.textContent = `Your event with ${currentBooking.chefName} is booked. Platform satisfaction insurance is active.`;
+    actionContainer.innerHTML = `
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <span class="badge-status-dot verified"></span> Confirmed & Secured
+        <button id="btn-customer-chat" class="btn-primary btn-sm" style="padding: 0.4rem 0.75rem;">💬 Chat</button>
+      </div>
+    `;
+    
+    document.getElementById("btn-customer-chat").onclick = () => {
+      window.openChatDialog(currentBooking.id, "customer");
+    };
+  } else if (currentBooking.status === 'rejected') {
+    titleEl.innerHTML = `❌ Request Declined by Chef`;
+    descEl.textContent = `${currentBooking.chefName} declined your proposal. Please customize your menu again or choose another chef.`;
+    actionContainer.innerHTML = `<span class="badge-status-dot canceled" style="background:var(--danger);"></span> Declined`;
+  }
+};
+
+window.openChatDialog = function(bookingId, role) {
+  state.activeChatBookingId = bookingId;
+  state.activeChatRole = role;
+  
+  const booking = state.bookings.find(b => b.id === bookingId);
+  if (!booking) return;
+  
+  // Set chat headers
+  const otherParty = role === "customer" ? booking.chefName : booking.clientName;
+  document.getElementById("chat-header-title").textContent = `Chat with ${otherParty}`;
+  document.getElementById("chat-header-subtitle").textContent = `Secured Handshake for ID: ${booking.id}`;
+  
+  // Empty input field
+  document.getElementById("chat-message-input").value = "";
+  
+  // Show dialog
+  const chatDialog = document.getElementById("chat-dialog");
+  chatDialog.showModal();
+  
+  // Render messages
+  window.renderChatMessages();
+};
+
+window.renderChatMessages = function() {
+  const container = document.getElementById("chat-messages-container");
+  if (!container) return;
+  
+  const booking = state.bookings.find(b => b.id === state.activeChatBookingId);
+  if (!booking) return;
+  
+  // Initialize messages list if empty
+  if (!booking.messages) {
+    booking.messages = [];
+  }
+  
+  // Map messages to bubbles
+  container.innerHTML = booking.messages.map(msg => {
+    const isMe = msg.sender === state.activeChatRole;
+    const bubbleBg = isMe ? "var(--orange)" : "var(--navy-dark)";
+    const bubbleColor = "#fff";
+    const alignment = isMe ? "flex-end" : "flex-start";
+    const senderLabel = msg.sender === "customer" ? "Customer" : "Chef";
+    
+    return `
+      <div style="display: flex; flex-direction: column; align-items: ${alignment}; max-width: 80%; align-self: ${alignment};">
+        <span style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 0.15rem;">${senderLabel} • ${msg.time}</span>
+        <div style="background: ${bubbleBg}; color: ${bubbleColor}; padding: 0.5rem 0.75rem; border-radius: 8px; font-size: 0.85rem; line-height: 1.4; word-break: break-word; box-shadow: var(--shadow-sm);">
+          ${msg.text}
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // Scroll to bottom
+  container.scrollTop = container.scrollHeight;
+};
+
+window.handleSendChatMessage = function(event) {
+  event.preventDefault();
+  
+  const input = document.getElementById("chat-message-input");
+  const text = input.value.trim();
+  if (!text) return;
+  
+  const booking = state.bookings.find(b => b.id === state.activeChatBookingId);
+  if (!booking) return;
+  
+  if (!booking.messages) {
+    booking.messages = [];
+  }
+  
+  const now = new Date();
+  const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+  // Append message
+  booking.messages.push({
+    sender: state.activeChatRole,
+    text: text,
+    time: timeString
+  });
+  
+  // Save updated bookings database back to localStorage instantly
+  localStorage.setItem("caterease_bookings", JSON.stringify(state.bookings));
+  
+  // Refresh UI
+  input.value = "";
+  window.renderChatMessages();
+};

@@ -2019,6 +2019,7 @@ function updateAuthUI() {
 
 window.handleLogout = function() {
   state.currentUser = null;
+  state.booking = null; // Clear active booking on logout
   showToast("Logged Out", "You have been logged out successfully.", "success");
   
   // Reset view to home
@@ -2062,6 +2063,7 @@ window.handleCustomerLogin = function() {
   }
   
   state.currentUser = { role: "customer", email: email, name: customer.name };
+  state.booking = null; // Clear active deals for new customer session
   
   if (document.getElementById("cust-name-input")) {
     document.getElementById("cust-name-input").value = customer.name;
@@ -2086,6 +2088,7 @@ window.handleCustomerSignup = function() {
   localStorage.setItem("caterease_customers", JSON.stringify(CUSTOMERS));
   
   state.currentUser = { role: "customer", email: email, name: name };
+  state.booking = null; // Clear active deals for new customer session
   
   if (document.getElementById("cust-name-input")) {
     document.getElementById("cust-name-input").value = name;

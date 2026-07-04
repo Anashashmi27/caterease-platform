@@ -2494,11 +2494,12 @@ window.updateCustomerDealsBanner = function() {
   if (!dealsBanner) return;
   
   if (!state.booking) {
-    // Look up latest booking for this session customer
-    const clientName = document.getElementById("cust-name-input") ? document.getElementById("cust-name-input").value.trim() : "Rohan Malhotra";
-    const userBookings = state.bookings.filter(b => b.clientName === clientName);
-    if (userBookings.length > 0) {
-      state.booking = userBookings[userBookings.length - 1];
+    // Only auto-populate from database if the customer is logged in
+    if (state.currentUser && state.currentUser.role === "customer") {
+      const userBookings = state.bookings.filter(b => b.clientName === state.currentUser.name);
+      if (userBookings.length > 0) {
+        state.booking = userBookings[userBookings.length - 1];
+      }
     }
   }
   

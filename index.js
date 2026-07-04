@@ -188,76 +188,20 @@ let state = {
   standbyDispatched: false,
   canvasAnimationId: null,
   booking: null, // Track client's proposed booking
-  bookings: [
-    {
-      id: "IN-92019",
-      clientName: "Rohan Malhotra",
-      date: "July 15, 2026 @ 7:30 PM (IST)",
-      location: "Bandra West, Mumbai Sea-Face Penthouse",
-      guests: 15,
-      amount: "₹31,050.00",
-      chefId: "chef-aravind",
-      status: "requested",
-      menu: {
-        appetizers: "Malabar Prawn Fry with Curry Leaves",
-        mains: "Meen Curry (Kerala Fish Curry) with Appams",
-        desserts: "Elaneer Payasam (Tender Coconut Kheer)"
-      },
-      kitchenSpecs: "Standard gas stoves, heavy brass vessels, coconut grater support."
-    },
-    {
-      id: "IN-42091",
-      clientName: "Pooja Hegde",
-      date: "July 19, 2026 @ 8:00 PM (IST)",
-      location: "Juhu Road, Mumbai",
-      guests: 22,
-      amount: "₹45,540.00",
-      chefId: "chef-aravind",
-      status: "requested",
-      menu: {
-        appetizers: "Crispy Gunpowder Idli Bites",
-        mains: "Meen Curry (Kerala Fish Curry) with Appams",
-        desserts: "Ada Pradhaman (Jaggery & Coconut Milk)"
-      },
-      kitchenSpecs: "Standard gas cylinder support."
-    },
-    {
-      id: "IN-88301",
-      clientName: "Karan Johar",
-      date: "July 24, 2026 @ 8:30 PM (IST)",
-      location: "Carter Road Penthouse, Bandra",
-      guests: 40,
-      amount: "₹72,000.00",
-      chefId: "chef-meera",
-      status: "requested",
-      menu: {
-        appetizers: "Melt-in-mouth Galouti Kebabs with Ulta Tawa Paratha",
-        mains: "Royal Awadhi Mutton Dum Biryani",
-        desserts: "Shahi Tukda with Rabri & Silver Leaf"
-      },
-      kitchenSpecs: "Tandoor clay oven layout."
-    },
-    {
-      id: "IN-77610",
-      clientName: "Nisha Patel",
-      date: "July 26, 2026 @ 1:30 PM (IST)",
-      location: "Nepean Sea Road, Mumbai",
-      guests: 12,
-      amount: "₹19,500.00",
-      chefId: "chef-rohan",
-      status: "requested",
-      menu: {
-        appetizers: "Gujarati Handvo with Coriander Chutney",
-        mains: "Jain Royal Heritage Thali (8 Items)",
-        desserts: "Rich Basundi with Almond Shavings"
-      },
-      kitchenSpecs: "Pristine, 100% vegetarian-only separate utensils."
-    }
-  ]
+  bookings: []
 };
 
 // 3. Document Elements & Lifecycle Hooks
 document.addEventListener("DOMContentLoaded", () => {
+  // Wipe out any stale, corrupted or historical local storage records on first load
+  if (!localStorage.getItem("caterease_clean_v1")) {
+    localStorage.clear();
+    localStorage.setItem("caterease_clean_v1", "true");
+    // Reload to ensure all default configurations re-initialize cleanly
+    window.location.reload();
+    return;
+  }
+
   initUI();
   
   // Sync state.bookings from localStorage

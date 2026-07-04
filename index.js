@@ -2306,3 +2306,99 @@ function populateChefSelect() {
     select.dispatchEvent(event);
   }
 }
+
+// 16. Real-Time File Image Selector & Data Base Polling Sync
+window.handleChefAvatarFileSelect = function(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64Data = e.target.result;
+    
+    // Find active chef in database
+    const activeChef = CHEFS.find(c => c.id === state.currentChefId) || PENDING_CHEFS.find(c => c.id === state.currentChefId);
+    if (activeChef) {
+      activeChef.avatar = base64Data;
+      
+      // Update form text value & sidebar image instantly in real-time
+      document.getElementById("chef-avatar-input").value = base64Data;
+      document.getElementById("chef-dashboard-avatar-img").src = base64Data;
+      
+      // Save updated databases to localStorage
+      localStorage.setItem("caterease_chefs", JSON.stringify(CHEFS));
+      localStorage.setItem("caterease_pending_chefs", JSON.stringify(PENDING_CHEFS));
+      
+      // Refresh views instantly
+      renderChefGrid(CHEFS);
+      drawGeoMap();
+      
+      showToast("Profile Picture Updated", "Your kitchen avatar was updated in real time!", "success");
+    }
+  };
+  reader.readAsDataURL(file);
+};
+
+// Periodic database sync checking local storage every 3 seconds
+window.syncDatabase = function() {
+  // Pull database records from localStorage
+  const storedChefs = JSON.parse(localStorage.getItem("caterease_chefs"));
+  if (storedChefs && storedChefs.length > 0) {
+    // Basic structural comparison to see if new entries were added or edited
+    const hasChanges = JSON.stringify(storedChefs) !== JSON.stringify(CHEFS);
+    if (hasChanges) {
+      CHEFS = storedChefs;
+    }
+  }
+
+  const storedPending = JSON.parse(localStorage.getItem("caterease_pending_chefs"));
+  if (storedPending) {
+    const hasChangesPending = JSON.stringify(storedPending) !== JSON.stringify(PENDING_CHEFS);
+    if (hasChangesPending) {
+      PENDING_CHEFS = storedPending;
+    }
+  }
+  
+  const storedCustomers = JSON.parse(localStorage.getItem("caterease_customers"));
+  if (storedCustomers) {
+    CUSTOMERS = storedCustomers;
+  }
+
+  const storedBookings = JSON.parse(localStorage.getItem("caterease_bookings"));
+  if (storedBookings) {
+    const hasChangesBookings = JSON.stringify(storedBookings) !== JSON.stringify(state.bookings);
+    if (hasChangesBookings) {
+      state.bookings = storedBookings;
+    }
+  }
+
+  // Real-Time UI refresh based on current workspace
+  if (state.currentView === "customer") {
+    runSearchFilter();
+    drawGeoMap();
+  } else if (state.currentView === "chef") {
+    // Pull current chef data to keep active listings synchronized
+    const activeChef = CHEFS.find(c => c.id === state.currentChefId) || PENDING_CHEFS.find(c => c.id === state.currentChefId);
+    if (activeChef) {
+      document.getElementById("chef-dashboard-avatar-img").src = activeChef.avatar;
+      document.getElementById("chef-dashboard-name").textContent = activeChef.name;
+      document.getElementById("chef-dashboard-specialties").textContent = activeChef.type;
+      
+      // Avoid resetting location form inputs while chef might be typing
+      if (document.activeElement && !["chef-name-input", "chef-specialties-input", "chef-price-input", "chef-city-input", "chef-state-input", "chef-avatar-input"].includes(document.activeElement.id)) {
+        document.getElementById("chef-name-input").value = activeChef.name;
+        document.getElementById("chef-specialties-input").value = activeChef.specialties || activeChef.type;
+        document.getElementById("chef-price-input").value = activeChef.basePrice;
+        document.getElementById("chef-avatar-input").value = activeChef.avatar || "";
+      }
+      
+      updateVerificationUI();
+      renderChefPendingOrders();
+    }
+  } else if (state.currentView === "admin") {
+    renderPendingChefs();
+  }
+};
+
+// Start periodic sync polling interval
+setInterval(window.syncDatabase, 3000);

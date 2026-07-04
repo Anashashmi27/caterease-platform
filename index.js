@@ -2494,16 +2494,6 @@ window.updateCustomerDealsBanner = function() {
   if (!dealsBanner) return;
   
   if (!state.booking) {
-    // Only auto-populate from database if the customer is logged in
-    if (state.currentUser && state.currentUser.role === "customer") {
-      const userBookings = state.bookings.filter(b => b.clientName === state.currentUser.name);
-      if (userBookings.length > 0) {
-        state.booking = userBookings[userBookings.length - 1];
-      }
-    }
-  }
-  
-  if (!state.booking) {
     dealsBanner.classList.add("hidden");
     return;
   }
